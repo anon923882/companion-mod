@@ -19,35 +19,36 @@ base {
 
 java.toolchain.languageVersion = JavaLanguageVersion.of(21)
 
-runs {
-    configureEach {
-        systemProperty 'forge.logging.markers', 'REGISTRIES'
-        systemProperty 'forge.logging.console.level', 'debug'
-        modSource project.sourceSets.main
+neoForge {
+    version = neoforge_version
+    
+    runs {
+        client {
+            client()
+        }
+        
+        server {
+            server()
+            programArgument '--nogui'
+        }
+        
+        data {
+            data()
+            programArguments.addAll '--mod', mod_id, '--all', '--output', file('src/generated/resources/').getAbsolutePath(), '--existing', file('src/main/resources/').getAbsolutePath()
+        }
     }
-
-    client {
-        systemProperty 'forge.enabledGameTestNamespaces', project.mod_id
-    }
-
-    server {
-        systemProperty 'forge.enabledGameTestNamespaces', project.mod_id
-        programArgument '--nogui'
-    }
-
-    gameTestServer {
-        systemProperty 'forge.enabledGameTestNamespaces', project.mod_id
-    }
-
-    data {
-        programArguments.addAll '--mod', project.mod_id, '--all', '--output', file('src/generated/resources/').getAbsolutePath(), '--existing', file('src/main/resources/').getAbsolutePath()
+    
+    mods {
+        companionmod {
+            sourceSet sourceSets.main
+        }
     }
 }
 
 sourceSets.main.resources { srcDir 'src/generated/resources' }
 
 dependencies {
-    implementation "net.neoforged:neoforge:${neoforge_version}"
+    // NeoForge dependency is added automatically by the plugin
 }
 
 tasks.withType(JavaCompile).configureEach {
@@ -86,8 +87,4 @@ publishing {
             url "file://${project.projectDir}/repo"
         }
     }
-}
-
-tasks.withType(JavaCompile).configureEach {
-    options.encoding = 'UTF-8'
 }
