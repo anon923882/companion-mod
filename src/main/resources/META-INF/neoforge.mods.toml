@@ -1,0 +1,29 @@
+modLoader="javafml"
+loaderVersion="[4,)"
+license="MIT"
+issueTrackerURL="https://example.com/issues"
+
+[[mods]]
+modId="${modId}"
+version="${modVersion}"
+displayName="${modName}"
+#updateJSONURL=""
+displayURL="https://example.com/"
+authors="Companion AI"
+description='''
+A simple companion that follows you around and carries your items.
+'''
+
+[[dependencies.${modId}]]
+modId="neoforge"
+type="required"
+versionRange="[${neoForgeVersion},)"
+ordering="NONE"
+side="BOTH"
+
+[[dependencies.${modId}]]
+modId="minecraft"
+type="required"
+versionRange="[1.21.1]"
+ordering="NONE"
+side="BOTH"
