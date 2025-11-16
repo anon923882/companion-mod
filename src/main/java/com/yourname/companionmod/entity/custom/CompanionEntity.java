@@ -26,13 +26,27 @@ import net.minecraft.world.entity.ai.attributes.Attributes;
 import java.util.UUID;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.targeting.TargetingConditions;
+import net.minecraft.world.entity.MobCategory;
+import net.minecraft.world.food.FoodProperties;
 
 public class CompanionEntity extends PathfinderMob {
-    private static final EntityDataAccessor<String> OWNER_UUID = 
+    private static final EntityDataAccessor<String> OWNER_UUID =
         SynchedEntityData.defineId(CompanionEntity.class, EntityDataSerializers.STRING);
+    private static final EntityDataAccessor<Boolean> ATTACK_HOSTILES =
+        SynchedEntityData.defineId(CompanionEntity.class, EntityDataSerializers.BOOLEAN);
+    private static final EntityDataAccessor<Boolean> ATTACK_PASSIVES =
+        SynchedEntityData.defineId(CompanionEntity.class, EntityDataSerializers.BOOLEAN);
+    private static final EntityDataAccessor<Boolean> STAYING =
+        SynchedEntityData.defineId(CompanionEntity.class, EntityDataSerializers.BOOLEAN);
+    private static final EntityDataAccessor<Integer> LEVEL =
+        SynchedEntityData.defineId(CompanionEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Integer> EXPERIENCE =
+        SynchedEntityData.defineId(CompanionEntity.class, EntityDataSerializers.INT);
     
     private final SimpleContainer inventory = new SimpleContainer(27);
     private final Container equipmentContainer = new CompanionEquipmentContainer(this);
+    private static final int XP_PER_LEVEL = 25;
+    private int healCooldown = 0;
 
     public CompanionEntity(EntityType<? extends PathfinderMob> entityType, Level level) {
         super(entityType, level);
@@ -50,6 +64,11 @@ public class CompanionEntity extends PathfinderMob {
     protected void defineSynchedData(SynchedEntityData.Builder builder) {
         super.defineSynchedData(builder);
         builder.define(OWNER_UUID, "");
+        builder.define(ATTACK_HOSTILES, true);
+        builder.define(ATTACK_PASSIVES, false);
+        builder.define(STAYING, false);
+        builder.define(LEVEL, 1);
+        builder.define(EXPERIENCE, 0);
     }
 
     @Override
@@ -65,18 +84,49 @@ public class CompanionEntity extends PathfinderMob {
         this.targetSelector.addGoal(2, new ProtectOwnerFromAttackerGoal(this));
         this.targetSelector.addGoal(3, new RetaliateForOwnerGoal(this));
         this.targetSelector.addGoal(4, new NearestAttackableTargetGoal<>(this, Mob.class, 10,
-            true, false, mob -> mob instanceof Mob attacker && attacker.getTarget() == this.getOwner()));
+            true, false, this::shouldAttackMob));
+    }
+
+    @Override
+    public void tick() {
+        super.tick();
+        if (this.level().isClientSide) {
+            return;
+        }
+
+        if (this.healCooldown > 0) {
+            this.healCooldown--;
+        } else {
+            this.trySelfHeal();
+            this.healCooldown = 40;
+        }
+
+        this.setCustomName(net.minecraft.network.chat.Component.literal(
+            "Companion Lv." + this.entityData.get(LEVEL) + " (" + (int)this.getHealth() + "/" + (int)this.getMaxHealth() + " HP)"));
+        this.setCustomNameVisible(true);
     }
 
     @Override
     public InteractionResult mobInteract(Player player, InteractionHand hand) {
         if (!this.level().isClientSide && player instanceof ServerPlayer serverPlayer) {
             if (this.isOwnedBy(player) || this.getOwnerUUID() == null) {
-                if (this.getOwnerUUID() == null) {
-                    this.setOwnerUUID(player.getUUID());
+                if (player.isCrouching()) {
+                    if (this.getOwnerUUID() == null) {
+                        this.setOwnerUUID(player.getUUID());
+                    }
+                    if (player.getItemInHand(hand).isEmpty()) {
+                        this.toggleStaying(player);
+                    } else {
+                        this.cycleAggression(player);
+                    }
+                    return InteractionResult.SUCCESS;
+                } else {
+                    if (this.getOwnerUUID() == null) {
+                        this.setOwnerUUID(player.getUUID());
+                    }
+                    serverPlayer.openMenu(new CompanionMenuProvider(this));
+                    return InteractionResult.SUCCESS;
                 }
-                serverPlayer.openMenu(new CompanionMenuProvider(this));
-                return InteractionResult.SUCCESS;
             }
         }
         return InteractionResult.sidedSuccess(this.level().isClientSide);
@@ -101,6 +151,104 @@ public class CompanionEntity extends PathfinderMob {
         return uuid == null ? null : this.level().getPlayerByUUID(uuid);
     }
 
+    public boolean isStaying() {
+        return this.entityData.get(STAYING);
+    }
+
+    public void toggleStaying(Player owner) {
+        boolean newValue = !this.isStaying();
+        this.entityData.set(STAYING, newValue);
+        this.navigation.stop();
+        if (owner != null && !this.level().isClientSide) {
+            owner.displayClientMessage(net.minecraft.network.chat.Component.literal(
+                "Companion is now " + (newValue ? "staying" : "following")), true);
+        }
+    }
+
+    public boolean shouldAttackMob(LivingEntity mob) {
+        if (mob == null || mob == this.getOwner() || this.isStaying()) {
+            return false;
+        }
+        MobCategory category = mob.getType().getCategory();
+        boolean hostile = category == MobCategory.MONSTER || category == MobCategory.MISC;
+        boolean passive = !hostile;
+
+        if (this.entityData.get(ATTACK_PASSIVES) && passive) {
+            return true;
+        }
+        if (this.entityData.get(ATTACK_HOSTILES) && hostile) {
+            return true;
+        }
+
+        Player owner = this.getOwner();
+        return owner != null && mob.getTarget() == owner;
+    }
+
+    private void addExperience(int amount) {
+        int newXp = this.entityData.get(EXPERIENCE) + amount;
+        int currentLevel = this.entityData.get(LEVEL);
+        while (newXp >= XP_PER_LEVEL) {
+            newXp -= XP_PER_LEVEL;
+            currentLevel++;
+            this.levelUp(currentLevel);
+        }
+        this.entityData.set(EXPERIENCE, newXp);
+        this.entityData.set(LEVEL, currentLevel);
+    }
+
+    private void levelUp(int newLevel) {
+        double baseHealth = 20.0D + (newLevel - 1) * 2.0D;
+        this.getAttribute(Attributes.MAX_HEALTH).setBaseValue(baseHealth);
+        this.setHealth((float)this.getMaxHealth());
+        this.setCustomName(net.minecraft.network.chat.Component.literal(
+            "Companion Lv." + newLevel + " (" + (int)this.getHealth() + "/" + (int)this.getMaxHealth() + " HP)"));
+        this.setCustomNameVisible(true);
+    }
+
+    private void trySelfHeal() {
+        if (this.getHealth() >= this.getMaxHealth() * 0.9F) {
+            return;
+        }
+
+        for (int i = 0; i < this.inventory.getContainerSize(); i++) {
+            ItemStack stack = this.inventory.getItem(i);
+            if (stack.isEdible()) {
+                FoodProperties props = stack.getItem().getFoodProperties(stack, this);
+                if (props != null) {
+                    this.heal(props.getNutrition());
+                    stack.shrink(1);
+                    if (stack.isEmpty()) {
+                        this.inventory.setItem(i, ItemStack.EMPTY);
+                    }
+                    break;
+                }
+            }
+        }
+    }
+
+    private void cycleAggression(Player owner) {
+        boolean attackHostiles = this.entityData.get(ATTACK_HOSTILES);
+        boolean attackPassives = this.entityData.get(ATTACK_PASSIVES);
+
+        if (!attackHostiles && !attackPassives) {
+            attackHostiles = true;
+        } else if (attackHostiles && !attackPassives) {
+            attackPassives = true;
+        } else {
+            attackHostiles = false;
+            attackPassives = false;
+        }
+
+        this.entityData.set(ATTACK_HOSTILES, attackHostiles);
+        this.entityData.set(ATTACK_PASSIVES, attackPassives);
+
+        if (owner != null && !owner.level().isClientSide()) {
+            String mode = attackHostiles ? (attackPassives ? "aggressive" : "hostile-only") : "defensive";
+            owner.displayClientMessage(net.minecraft.network.chat.Component.literal(
+                "Companion combat mode: " + mode), true);
+        }
+    }
+
     public Container getInventory() {
         return this.inventory;
     }
@@ -110,12 +258,26 @@ public class CompanionEntity extends PathfinderMob {
     }
 
     @Override
+    public boolean doHurtTarget(net.minecraft.world.entity.Entity target) {
+        boolean result = super.doHurtTarget(target);
+        if (result && target instanceof LivingEntity living && living.isDeadOrDying()) {
+            this.addExperience(5);
+        }
+        return result;
+    }
+
+    @Override
     public void addAdditionalSaveData(CompoundTag tag) {
         super.addAdditionalSaveData(tag);
         if (this.getOwnerUUID() != null) {
             tag.putString("OwnerUUID", this.getOwnerUUID().toString());
         }
         tag.put("Inventory", this.inventory.createTag(this.registryAccess()));
+        tag.putBoolean("AttackHostiles", this.entityData.get(ATTACK_HOSTILES));
+        tag.putBoolean("AttackPassives", this.entityData.get(ATTACK_PASSIVES));
+        tag.putBoolean("Staying", this.entityData.get(STAYING));
+        tag.putInt("Level", this.entityData.get(LEVEL));
+        tag.putInt("Experience", this.entityData.get(EXPERIENCE));
     }
 
     @Override
@@ -127,6 +289,12 @@ public class CompanionEntity extends PathfinderMob {
         if (tag.contains("Inventory")) {
             this.inventory.fromTag(tag.getList("Inventory", 10), this.registryAccess());
         }
+        this.entityData.set(ATTACK_HOSTILES, tag.getBoolean("AttackHostiles"));
+        this.entityData.set(ATTACK_PASSIVES, tag.getBoolean("AttackPassives"));
+        this.entityData.set(STAYING, tag.getBoolean("Staying"));
+        this.entityData.set(LEVEL, Math.max(1, tag.getInt("Level")));
+        this.entityData.set(EXPERIENCE, tag.getInt("Experience"));
+        this.levelUp(this.entityData.get(LEVEL));
     }
 
     private static class CompanionEquipmentContainer implements Container {
@@ -233,7 +401,7 @@ public class CompanionEntity extends PathfinderMob {
         @Override
         public boolean canUse() {
             Player player = this.companion.getOwner();
-            if (player == null || player.isSpectator()) {
+            if (player == null || player.isSpectator() || this.companion.isStaying()) {
                 return false;
             }
             if (this.companion.distanceToSqr(player) < (double)(this.stopDistance * this.stopDistance)) {
@@ -245,7 +413,8 @@ public class CompanionEntity extends PathfinderMob {
 
         @Override
         public boolean canContinueToUse() {
-            return !this.companion.getNavigation().isDone() 
+            return !this.companion.getNavigation().isDone()
+                && !this.companion.isStaying()
                 && this.companion.distanceToSqr(this.owner) > (double)(this.stopDistance * this.stopDistance);
         }
 

@@ -9,7 +9,7 @@ import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ArmorItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.entity.EquipmentSlot;
-import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.LivingEntity;
 
 public class CompanionMenu extends AbstractContainerMenu {
     private final Container companionInventory;
@@ -58,16 +58,16 @@ public class CompanionMenu extends AbstractContainerMenu {
             }
         }
 
-        // Player inventory (3x9)
+        // Player inventory (3x9) aligned to the container texture's lower grid
         for (int row = 0; row < 3; row++) {
             for (int col = 0; col < 9; col++) {
-                this.addSlot(new Slot(playerInventory, col + row * 9 + 9, 8 + col * 18, 84 + row * 18));
+                this.addSlot(new Slot(playerInventory, col + row * 9 + 9, 8 + col * 18, 140 + row * 18));
             }
         }
 
         // Player hotbar (1x9)
         for (int col = 0; col < 9; col++) {
-            this.addSlot(new Slot(playerInventory, col, 8 + col * 18, 142));
+            this.addSlot(new Slot(playerInventory, col, 8 + col * 18, 198));
         }
     }
 
@@ -87,7 +87,7 @@ public class CompanionMenu extends AbstractContainerMenu {
                 }
             } else {
                 // Moving from player inventory to companion inventory
-                EquipmentSlot targetSlot = Mob.getEquipmentSlotForItem(slotStack);
+                EquipmentSlot targetSlot = LivingEntity.getEquipmentSlotForItem(slotStack);
                 int equipmentIndex = this.getEquipmentIndex(targetSlot);
 
                 if (equipmentIndex >= 0 && !this.slots.get(equipmentIndex).hasItem()) {
@@ -142,7 +142,7 @@ public class CompanionMenu extends AbstractContainerMenu {
             if (this.slotType == EquipmentSlot.MAINHAND || this.slotType == EquipmentSlot.OFFHAND) {
                 return true;
             }
-            EquipmentSlot itemSlot = Mob.getEquipmentSlotForItem(stack);
+            EquipmentSlot itemSlot = LivingEntity.getEquipmentSlotForItem(stack);
             return itemSlot == this.slotType;
         }
     }
