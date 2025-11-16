@@ -9,7 +9,7 @@ import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ArmorItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.entity.EquipmentSlot;
-import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.item.Items;
 
 public class CompanionMenu extends AbstractContainerMenu {
     private final Container companionInventory;
@@ -87,7 +87,7 @@ public class CompanionMenu extends AbstractContainerMenu {
                 }
             } else {
                 // Moving from player inventory to companion inventory
-                EquipmentSlot targetSlot = LivingEntity.getEquipmentSlotForItem(slotStack);
+                EquipmentSlot targetSlot = this.inferSlot(slotStack);
                 int equipmentIndex = this.getEquipmentIndex(targetSlot);
 
                 if (equipmentIndex >= 0 && !this.slots.get(equipmentIndex).hasItem()) {
@@ -142,8 +142,18 @@ public class CompanionMenu extends AbstractContainerMenu {
             if (this.slotType == EquipmentSlot.MAINHAND || this.slotType == EquipmentSlot.OFFHAND) {
                 return true;
             }
-            EquipmentSlot itemSlot = LivingEntity.getEquipmentSlotForItem(stack);
+            EquipmentSlot itemSlot = this.inferSlot(stack);
             return itemSlot == this.slotType;
+        }
+
+        private EquipmentSlot inferSlot(ItemStack stack) {
+            if (stack.getItem() instanceof ArmorItem armor) {
+                return armor.getEquipmentSlot();
+            }
+            if (stack.is(Items.SHIELD)) {
+                return EquipmentSlot.OFFHAND;
+            }
+            return EquipmentSlot.MAINHAND;
         }
     }
 }

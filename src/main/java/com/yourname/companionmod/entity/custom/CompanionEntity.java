@@ -28,6 +28,10 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.targeting.TargetingConditions;
 import net.minecraft.world.entity.MobCategory;
 import net.minecraft.world.food.FoodProperties;
+import net.minecraft.world.entity.SpawnGroupData;
+import net.minecraft.world.entity.MobSpawnType;
+import net.minecraft.world.DifficultyInstance;
+import net.minecraft.world.level.ServerLevelAccessor;
 
 public class CompanionEntity extends PathfinderMob {
     private static final EntityDataAccessor<String> OWNER_UUID =
@@ -41,6 +45,8 @@ public class CompanionEntity extends PathfinderMob {
     private static final EntityDataAccessor<Integer> LEVEL =
         SynchedEntityData.defineId(CompanionEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Integer> EXPERIENCE =
+        SynchedEntityData.defineId(CompanionEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Integer> TEXTURE_VARIANT =
         SynchedEntityData.defineId(CompanionEntity.class, EntityDataSerializers.INT);
     
     private final SimpleContainer inventory = new SimpleContainer(27);
@@ -69,6 +75,7 @@ public class CompanionEntity extends PathfinderMob {
         builder.define(STAYING, false);
         builder.define(LEVEL, 1);
         builder.define(EXPERIENCE, 0);
+        builder.define(TEXTURE_VARIANT, 0);
     }
 
     @Override
@@ -181,7 +188,11 @@ public class CompanionEntity extends PathfinderMob {
         }
 
         Player owner = this.getOwner();
-        return owner != null && mob.getTarget() == owner;
+        return owner != null && mob instanceof Mob attacker && attacker.getTarget() == owner;
+    }
+
+    public int getTextureVariant() {
+        return this.entityData.get(TEXTURE_VARIANT);
     }
 
     private void addExperience(int amount) {
@@ -212,10 +223,10 @@ public class CompanionEntity extends PathfinderMob {
 
         for (int i = 0; i < this.inventory.getContainerSize(); i++) {
             ItemStack stack = this.inventory.getItem(i);
-            if (stack.isEdible()) {
+            if (stack.getItem().isEdible()) {
                 FoodProperties props = stack.getItem().getFoodProperties(stack, this);
                 if (props != null) {
-                    this.heal(props.getNutrition());
+                    this.heal(props.nutrition());
                     stack.shrink(1);
                     if (stack.isEmpty()) {
                         this.inventory.setItem(i, ItemStack.EMPTY);
@@ -258,6 +269,16 @@ public class CompanionEntity extends PathfinderMob {
     }
 
     @Override
+    public SpawnGroupData finalizeSpawn(ServerLevelAccessor levelAccessor, DifficultyInstance difficulty,
+            MobSpawnType spawnType, SpawnGroupData spawnData) {
+        SpawnGroupData data = super.finalizeSpawn(levelAccessor, difficulty, spawnType, spawnData);
+        if (!levelAccessor.isClientSide()) {
+            this.entityData.set(TEXTURE_VARIANT, this.getRandom().nextInt(3));
+        }
+        return data;
+    }
+
+    @Override
     public boolean doHurtTarget(net.minecraft.world.entity.Entity target) {
         boolean result = super.doHurtTarget(target);
         if (result && target instanceof LivingEntity living && living.isDeadOrDying()) {
@@ -278,6 +299,7 @@ public class CompanionEntity extends PathfinderMob {
         tag.putBoolean("Staying", this.entityData.get(STAYING));
         tag.putInt("Level", this.entityData.get(LEVEL));
         tag.putInt("Experience", this.entityData.get(EXPERIENCE));
+        tag.putInt("TextureVariant", this.entityData.get(TEXTURE_VARIANT));
     }
 
     @Override
@@ -294,6 +316,7 @@ public class CompanionEntity extends PathfinderMob {
         this.entityData.set(STAYING, tag.getBoolean("Staying"));
         this.entityData.set(LEVEL, Math.max(1, tag.getInt("Level")));
         this.entityData.set(EXPERIENCE, tag.getInt("Experience"));
+        this.entityData.set(TEXTURE_VARIANT, tag.getInt("TextureVariant"));
         this.levelUp(this.entityData.get(LEVEL));
     }
 
