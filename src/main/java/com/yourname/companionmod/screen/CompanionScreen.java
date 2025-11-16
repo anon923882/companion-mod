@@ -1,6 +1,5 @@
 package com.yourname.companionmod.screen;
 
-import com.yourname.companionmod.CompanionMod;
 import com.yourname.companionmod.menu.CompanionMenu;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
@@ -9,12 +8,12 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Inventory;
 
 public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
-    private static final ResourceLocation TEXTURE = 
-        ResourceLocation.fromNamespaceAndPath(CompanionMod.MOD_ID, "textures/gui/companion_inventory.png");
+    private static final ResourceLocation TEXTURE =
+        new ResourceLocation("minecraft", "textures/gui/container/generic_54.png");
 
     public CompanionScreen(CompanionMenu menu, Inventory playerInventory, Component title) {
         super(menu, playerInventory, title);
-        this.imageHeight = 168;
+        this.imageHeight = 222;
         this.inventoryLabelY = this.imageHeight - 94;
     }
 

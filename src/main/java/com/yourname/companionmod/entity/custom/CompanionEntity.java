@@ -13,11 +13,16 @@ import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.entity.ai.goal.*;
+import net.minecraft.world.entity.ai.goal.target.HurtByTargetGoal;
+import net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.Mob;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import java.util.UUID;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.ai.targeting.TargetingConditions;
 
 public class CompanionEntity extends PathfinderMob {
     private static final EntityDataAccessor<String> OWNER_UUID = 
@@ -46,9 +51,16 @@ public class CompanionEntity extends PathfinderMob {
     protected void registerGoals() {
         this.goalSelector.addGoal(0, new FloatGoal(this));
         this.goalSelector.addGoal(1, new FollowOwnerGoal(this));
+        this.goalSelector.addGoal(2, new MeleeAttackGoal(this, 1.2D, true));
         this.goalSelector.addGoal(2, new LookAtPlayerGoal(this, Player.class, 8.0F));
         this.goalSelector.addGoal(3, new RandomLookAroundGoal(this));
         this.goalSelector.addGoal(4, new WaterAvoidingRandomStrollGoal(this, 0.8D));
+
+        this.targetSelector.addGoal(1, new HurtByTargetGoal(this));
+        this.targetSelector.addGoal(2, new ProtectOwnerFromAttackerGoal(this));
+        this.targetSelector.addGoal(3, new RetaliateForOwnerGoal(this));
+        this.targetSelector.addGoal(4, new NearestAttackableTargetGoal<>(this, Mob.class, 10,
+            true, false, mob -> mob.getTarget() == this.getOwner()));
     }
 
     @Override
@@ -160,6 +172,82 @@ public class CompanionEntity extends PathfinderMob {
         }
     }
 
+    private static class ProtectOwnerFromAttackerGoal extends TargetGoal {
+        private final CompanionEntity companion;
+        private LivingEntity attacker;
+        private int timestamp;
+
+        public ProtectOwnerFromAttackerGoal(CompanionEntity companion) {
+            super(companion, false);
+            this.companion = companion;
+        }
+
+        @Override
+        public boolean canUse() {
+            Player owner = this.companion.getOwner();
+            if (owner == null) {
+                return false;
+            }
+
+            this.attacker = owner.getLastHurtByMob();
+            int attackerTime = owner.getLastHurtByMobTimestamp();
+
+            if (attackerTime == this.timestamp || this.attacker == null) {
+                return false;
+            }
+
+            return this.canAttack(this.attacker, TargetingConditions.DEFAULT);
+        }
+
+        @Override
+        public void start() {
+            this.mob.setTarget(this.attacker);
+            Player owner = this.companion.getOwner();
+            if (owner != null) {
+                this.timestamp = owner.getLastHurtByMobTimestamp();
+            }
+            super.start();
+        }
+    }
+
+    private static class RetaliateForOwnerGoal extends TargetGoal {
+        private final CompanionEntity companion;
+        private LivingEntity target;
+        private int timestamp;
+
+        public RetaliateForOwnerGoal(CompanionEntity companion) {
+            super(companion, false);
+            this.companion = companion;
+        }
+
+        @Override
+        public boolean canUse() {
+            Player owner = this.companion.getOwner();
+            if (owner == null) {
+                return false;
+            }
+
+            this.target = owner.getLastHurtMob();
+            int targetTime = owner.getLastHurtMobTimestamp();
+
+            if (targetTime == this.timestamp || this.target == null) {
+                return false;
+            }
+
+            return this.canAttack(this.target, TargetingConditions.DEFAULT);
+        }
+
+        @Override
+        public void start() {
+            this.mob.setTarget(this.target);
+            Player owner = this.companion.getOwner();
+            if (owner != null) {
+                this.timestamp = owner.getLastHurtMobTimestamp();
+            }
+            super.start();
+        }
+    }
+
     private static class CompanionMenuProvider implements net.minecraft.world.MenuProvider {
         private final CompanionEntity companion;
 
@@ -173,7 +261,7 @@ public class CompanionEntity extends PathfinderMob {
         }
 
         @Override
-        public net.minecraft.world.inventory.AbstractContainerMenu createMenu(int containerId, 
+        public net.minecraft.world.inventory.AbstractContainerMenu createMenu(int containerId,
                 net.minecraft.world.entity.player.Inventory playerInventory, Player player) {
             return new CompanionMenu(containerId, playerInventory, companion.getInventory());
         }
