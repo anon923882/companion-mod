@@ -223,16 +223,14 @@ public class CompanionEntity extends PathfinderMob {
 
         for (int i = 0; i < this.inventory.getContainerSize(); i++) {
             ItemStack stack = this.inventory.getItem(i);
-            if (stack.isEdible()) {
-                FoodProperties props = stack.getFoodProperties(this);
-                if (props != null) {
-                    this.heal(props.nutrition());
-                    stack.shrink(1);
-                    if (stack.isEmpty()) {
-                        this.inventory.setItem(i, ItemStack.EMPTY);
-                    }
-                    break;
+            FoodProperties props = stack.getFoodProperties(this);
+            if (props != null) {
+                this.heal(props.nutrition());
+                stack.shrink(1);
+                if (stack.isEmpty()) {
+                    this.inventory.setItem(i, ItemStack.EMPTY);
                 }
+                break;
             }
         }
     }
