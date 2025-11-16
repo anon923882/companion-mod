@@ -32,6 +32,8 @@ import net.minecraft.world.entity.SpawnGroupData;
 import net.minecraft.world.entity.MobSpawnType;
 import net.minecraft.world.DifficultyInstance;
 import net.minecraft.world.level.ServerLevelAccessor;
+import net.minecraft.world.entity.item.ExperienceOrb;
+import net.neoforged.neoforge.network.NetworkHooks;
 
 public class CompanionEntity extends PathfinderMob {
     private static final EntityDataAccessor<String> OWNER_UUID =
@@ -48,8 +50,10 @@ public class CompanionEntity extends PathfinderMob {
         SynchedEntityData.defineId(CompanionEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Integer> TEXTURE_VARIANT =
         SynchedEntityData.defineId(CompanionEntity.class, EntityDataSerializers.INT);
-    
-    private final SimpleContainer inventory = new SimpleContainer(27);
+    private static final EntityDataAccessor<Boolean> PICKUP_XP =
+        SynchedEntityData.defineId(CompanionEntity.class, EntityDataSerializers.BOOLEAN);
+
+    private final SimpleContainer inventory = new SimpleContainer(54);
     private final Container equipmentContainer = new CompanionEquipmentContainer(this);
     private static final int XP_PER_LEVEL = 25;
     private int healCooldown = 0;
@@ -76,6 +80,7 @@ public class CompanionEntity extends PathfinderMob {
         builder.define(LEVEL, 1);
         builder.define(EXPERIENCE, 0);
         builder.define(TEXTURE_VARIANT, 0);
+        builder.define(PICKUP_XP, false);
     }
 
     @Override
@@ -108,6 +113,10 @@ public class CompanionEntity extends PathfinderMob {
             this.healCooldown = 40;
         }
 
+        if (this.isPickingUpXp()) {
+            this.seekExperienceOrbs();
+        }
+
         this.setCustomName(net.minecraft.network.chat.Component.literal(
             "Companion Lv." + this.entityData.get(LEVEL) + " (" + (int)this.getHealth() + "/" + (int)this.getMaxHealth() + " HP)"));
         this.setCustomNameVisible(true);
@@ -131,7 +140,7 @@ public class CompanionEntity extends PathfinderMob {
                     if (this.getOwnerUUID() == null) {
                         this.setOwnerUUID(player.getUUID());
                     }
-                    serverPlayer.openMenu(new CompanionMenuProvider(this));
+                    NetworkHooks.openScreen(serverPlayer, new CompanionMenuProvider(this), buf -> buf.writeVarInt(this.getId()));
                     return InteractionResult.SUCCESS;
                 }
             }
@@ -191,6 +200,30 @@ public class CompanionEntity extends PathfinderMob {
         return owner != null && mob instanceof Mob attacker && attacker.getTarget() == owner;
     }
 
+    public boolean isAttackingHostiles() {
+        return this.entityData.get(ATTACK_HOSTILES);
+    }
+
+    public void setAttackHostiles(boolean value) {
+        this.entityData.set(ATTACK_HOSTILES, value);
+    }
+
+    public boolean isAttackingPassives() {
+        return this.entityData.get(ATTACK_PASSIVES);
+    }
+
+    public void setAttackPassives(boolean value) {
+        this.entityData.set(ATTACK_PASSIVES, value);
+    }
+
+    public boolean isPickingUpXp() {
+        return this.entityData.get(PICKUP_XP);
+    }
+
+    public void setPickupXp(boolean value) {
+        this.entityData.set(PICKUP_XP, value);
+    }
+
     public int getTextureVariant() {
         return this.entityData.get(TEXTURE_VARIANT);
     }
@@ -231,6 +264,23 @@ public class CompanionEntity extends PathfinderMob {
                     this.inventory.setItem(i, ItemStack.EMPTY);
                 }
                 break;
+            }
+        }
+    }
+
+    private void seekExperienceOrbs() {
+        if (this.isStaying()) {
+            return;
+        }
+
+        ExperienceOrb orb = this.level().getNearestEntity(ExperienceOrb.class, TargetingConditions.forCombat(),
+            this, this.getX(), this.getY(), this.getZ(), this.getBoundingBox().inflate(8.0D));
+
+        if (orb != null) {
+            this.getNavigation().moveTo(orb, 1.1D);
+            if (this.distanceToSqr(orb) < 2.0D) {
+                this.addExperience(orb.value);
+                orb.discard();
             }
         }
     }
@@ -298,6 +348,7 @@ public class CompanionEntity extends PathfinderMob {
         tag.putInt("Level", this.entityData.get(LEVEL));
         tag.putInt("Experience", this.entityData.get(EXPERIENCE));
         tag.putInt("TextureVariant", this.entityData.get(TEXTURE_VARIANT));
+        tag.putBoolean("PickupXp", this.entityData.get(PICKUP_XP));
     }
 
     @Override
@@ -315,6 +366,7 @@ public class CompanionEntity extends PathfinderMob {
         this.entityData.set(LEVEL, Math.max(1, tag.getInt("Level")));
         this.entityData.set(EXPERIENCE, tag.getInt("Experience"));
         this.entityData.set(TEXTURE_VARIANT, tag.getInt("TextureVariant"));
+        this.entityData.set(PICKUP_XP, tag.getBoolean("PickupXp"));
         this.levelUp(this.entityData.get(LEVEL));
     }
 
@@ -551,8 +603,7 @@ public class CompanionEntity extends PathfinderMob {
         @Override
         public net.minecraft.world.inventory.AbstractContainerMenu createMenu(int containerId,
                 net.minecraft.world.entity.player.Inventory playerInventory, Player player) {
-            return new CompanionMenu(containerId, playerInventory,
-                companion.getInventory(), companion.getEquipmentContainer());
+            return new CompanionMenu(containerId, playerInventory, companion);
         }
     }
 }

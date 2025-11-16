@@ -1,33 +1,45 @@
 package com.yourname.companionmod.menu;
 
+import com.yourname.companionmod.entity.custom.CompanionEntity;
+import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.Container;
 import net.minecraft.world.SimpleContainer;
+import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.inventory.DataSlot;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ArmorItem;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.Items;
 
 public class CompanionMenu extends AbstractContainerMenu {
     private final Container companionInventory;
     private final Container equipmentInventory;
-    private static final int COMPANION_INVENTORY_SIZE = 27;
+    private final CompanionEntity companion;
+    private static final int COMPANION_INVENTORY_SIZE = 54;
     private static final int EQUIPMENT_SIZE = 6;
     private static final int TOTAL_COMPANION_SLOTS = COMPANION_INVENTORY_SIZE + EQUIPMENT_SIZE;
+    private final DataSlot attackHostiles = DataSlot.standalone();
+    private final DataSlot attackPassives = DataSlot.standalone();
+    private final DataSlot pickupXp = DataSlot.standalone();
 
     // Client constructor
-    public CompanionMenu(int containerId, Inventory playerInventory) {
-        this(containerId, playerInventory, new SimpleContainer(COMPANION_INVENTORY_SIZE), new SimpleContainer(EQUIPMENT_SIZE));
+    public CompanionMenu(int containerId, Inventory playerInventory, FriendlyByteBuf buf) {
+        this(containerId, playerInventory, resolveCompanion(playerInventory, buf));
     }
 
     // Server constructor
-    public CompanionMenu(int containerId, Inventory playerInventory, Container companionInventory, Container equipmentInventory) {
+    public CompanionMenu(int containerId, Inventory playerInventory, CompanionEntity companion) {
         super(ModMenuTypes.COMPANION_MENU.get(), containerId);
-        this.companionInventory = companionInventory;
-        this.equipmentInventory = equipmentInventory;
+        this.companion = companion;
+        this.companionInventory = companion != null ? companion.getInventory() : new SimpleContainer(COMPANION_INVENTORY_SIZE);
+        this.equipmentInventory = companion != null ? companion.getEquipmentContainer() : new SimpleContainer(EQUIPMENT_SIZE);
+        this.addDataSlot(this.attackHostiles);
+        this.addDataSlot(this.attackPassives);
+        this.addDataSlot(this.pickupXp);
+        this.refreshTrackedFlags();
 
         // Armor slots (head, chest, legs, feet)
         int baseX = 8;
@@ -51,8 +63,8 @@ public class CompanionMenu extends AbstractContainerMenu {
         this.addSlot(new EquipmentRestrictedSlot(equipmentInventory, 5, baseX - 26, baseY + 5 * 18 + 4,
             EquipmentSlot.OFFHAND));
 
-        // Companion inventory slots (3x9 grid)
-        for (int row = 0; row < 3; row++) {
+        // Companion inventory slots (6x9 grid)
+        for (int row = 0; row < 6; row++) {
             for (int col = 0; col < 9; col++) {
                 this.addSlot(new Slot(companionInventory, col + row * 9, 8 + col * 18, 18 + row * 18));
             }
@@ -111,7 +123,44 @@ public class CompanionMenu extends AbstractContainerMenu {
 
     @Override
     public boolean stillValid(Player player) {
-        return this.companionInventory.stillValid(player);
+        return this.companion != null
+            ? !this.companion.isRemoved() && player.distanceToSqr(this.companion) <= 64.0D
+            : this.companionInventory.stillValid(player);
+    }
+
+    @Override
+    public boolean clickMenuButton(Player player, int id) {
+        if (this.companion == null || this.companion.level().isClientSide) {
+            return false;
+        }
+
+        switch (id) {
+            case 0 -> this.companion.setAttackHostiles(!this.companion.isAttackingHostiles());
+            case 1 -> this.companion.setAttackPassives(!this.companion.isAttackingPassives());
+            case 2 -> this.companion.setPickupXp(!this.companion.isPickingUpXp());
+            default -> {
+                return false;
+            }
+        }
+
+        this.refreshTrackedFlags();
+        return true;
+    }
+
+    public boolean isAttackingHostiles() {
+        return this.attackHostiles.get() == 1;
+    }
+
+    public boolean isAttackingPassives() {
+        return this.attackPassives.get() == 1;
+    }
+
+    public boolean isPickingUpXp() {
+        return this.pickupXp.get() == 1;
+    }
+
+    public int getCompanionRows() {
+        return COMPANION_INVENTORY_SIZE / 9;
     }
 
     private int getEquipmentIndex(EquipmentSlot slot) {
@@ -165,5 +214,20 @@ public class CompanionMenu extends AbstractContainerMenu {
             }
             return EquipmentSlot.MAINHAND;
         }
+    }
+
+    private void refreshTrackedFlags() {
+        if (this.companion != null) {
+            this.attackHostiles.set(this.companion.isAttackingHostiles() ? 1 : 0);
+            this.attackPassives.set(this.companion.isAttackingPassives() ? 1 : 0);
+            this.pickupXp.set(this.companion.isPickingUpXp() ? 1 : 0);
+        }
+    }
+
+    private static CompanionEntity resolveCompanion(Inventory playerInventory, FriendlyByteBuf buf) {
+        int entityId = buf.readVarInt();
+        return playerInventory.player.level().getEntity(entityId) instanceof CompanionEntity companion
+            ? companion
+            : null;
     }
 }
