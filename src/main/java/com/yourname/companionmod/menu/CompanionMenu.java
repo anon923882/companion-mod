@@ -126,6 +126,16 @@ public class CompanionMenu extends AbstractContainerMenu {
         };
     }
 
+    private EquipmentSlot inferSlot(ItemStack stack) {
+        if (stack.getItem() instanceof ArmorItem armor) {
+            return armor.getEquipmentSlot();
+        }
+        if (stack.is(Items.SHIELD)) {
+            return EquipmentSlot.OFFHAND;
+        }
+        return EquipmentSlot.MAINHAND;
+    }
+
     private static class EquipmentRestrictedSlot extends Slot {
         private final EquipmentSlot slotType;
 
