@@ -8,8 +8,8 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Inventory;
 
 public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
-    private static final ResourceLocation TEXTURE =
-        new ResourceLocation("minecraft", "textures/gui/container/generic_54.png");
+    private static final ResourceLocation TEXTURE = ResourceLocation.parse(
+        "minecraft:textures/gui/container/generic_54.png");
 
     public CompanionScreen(CompanionMenu menu, Inventory playerInventory, Component title) {
         super(menu, playerInventory, title);

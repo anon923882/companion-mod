@@ -15,6 +15,7 @@ import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.entity.ai.goal.*;
 import net.minecraft.world.entity.ai.goal.target.HurtByTargetGoal;
 import net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal;
+import net.minecraft.world.entity.ai.goal.target.TargetGoal;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.level.Level;
@@ -60,7 +61,7 @@ public class CompanionEntity extends PathfinderMob {
         this.targetSelector.addGoal(2, new ProtectOwnerFromAttackerGoal(this));
         this.targetSelector.addGoal(3, new RetaliateForOwnerGoal(this));
         this.targetSelector.addGoal(4, new NearestAttackableTargetGoal<>(this, Mob.class, 10,
-            true, false, mob -> mob.getTarget() == this.getOwner()));
+            true, false, mob -> mob instanceof Mob attacker && attacker.getTarget() == this.getOwner()));
     }
 
     @Override
