@@ -10,6 +10,8 @@ import net.minecraft.world.Container;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.SimpleContainer;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.entity.ai.goal.*;
@@ -30,6 +32,7 @@ public class CompanionEntity extends PathfinderMob {
         SynchedEntityData.defineId(CompanionEntity.class, EntityDataSerializers.STRING);
     
     private final SimpleContainer inventory = new SimpleContainer(27);
+    private final Container equipmentContainer = new CompanionEquipmentContainer(this);
 
     public CompanionEntity(EntityType<? extends PathfinderMob> entityType, Level level) {
         super(entityType, level);
@@ -39,7 +42,8 @@ public class CompanionEntity extends PathfinderMob {
         return PathfinderMob.createMobAttributes()
             .add(Attributes.MAX_HEALTH, 20.0D)
             .add(Attributes.MOVEMENT_SPEED, 0.3D)
-            .add(Attributes.FOLLOW_RANGE, 32.0D);
+            .add(Attributes.FOLLOW_RANGE, 32.0D)
+            .add(Attributes.ATTACK_DAMAGE, 4.0D);
     }
 
     @Override
@@ -101,6 +105,10 @@ public class CompanionEntity extends PathfinderMob {
         return this.inventory;
     }
 
+    public Container getEquipmentContainer() {
+        return this.equipmentContainer;
+    }
+
     @Override
     public void addAdditionalSaveData(CompoundTag tag) {
         super.addAdditionalSaveData(tag);
@@ -118,6 +126,95 @@ public class CompanionEntity extends PathfinderMob {
         }
         if (tag.contains("Inventory")) {
             this.inventory.fromTag(tag.getList("Inventory", 10), this.registryAccess());
+        }
+    }
+
+    private static class CompanionEquipmentContainer implements Container {
+        private static final EquipmentSlot[] EQUIPMENT_ORDER = new EquipmentSlot[] {
+            EquipmentSlot.HEAD,
+            EquipmentSlot.CHEST,
+            EquipmentSlot.LEGS,
+            EquipmentSlot.FEET,
+            EquipmentSlot.MAINHAND,
+            EquipmentSlot.OFFHAND
+        };
+
+        private final CompanionEntity companion;
+
+        public CompanionEquipmentContainer(CompanionEntity companion) {
+            this.companion = companion;
+        }
+
+        @Override
+        public int getContainerSize() {
+            return EQUIPMENT_ORDER.length;
+        }
+
+        @Override
+        public boolean isEmpty() {
+            for (EquipmentSlot slot : EQUIPMENT_ORDER) {
+                if (!this.companion.getItemBySlot(slot).isEmpty()) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        @Override
+        public ItemStack getItem(int index) {
+            return index >= 0 && index < EQUIPMENT_ORDER.length
+                ? this.companion.getItemBySlot(EQUIPMENT_ORDER[index])
+                : ItemStack.EMPTY;
+        }
+
+        @Override
+        public ItemStack removeItem(int index, int count) {
+            ItemStack stack = this.getItem(index);
+            if (stack.isEmpty()) {
+                return ItemStack.EMPTY;
+            }
+
+            ItemStack splitStack = stack.split(count);
+            if (!splitStack.isEmpty()) {
+                this.setChanged();
+            }
+            return splitStack;
+        }
+
+        @Override
+        public ItemStack removeItemNoUpdate(int index) {
+            ItemStack stack = this.getItem(index);
+            if (stack.isEmpty()) {
+                return ItemStack.EMPTY;
+            }
+            this.setItem(index, ItemStack.EMPTY);
+            return stack;
+        }
+
+        @Override
+        public void setItem(int index, ItemStack stack) {
+            if (index >= 0 && index < EQUIPMENT_ORDER.length) {
+                this.companion.setItemSlot(EQUIPMENT_ORDER[index], stack);
+                this.setChanged();
+            }
+        }
+
+        @Override
+        public void setChanged() {
+            this.companion.setPersistenceRequired();
+        }
+
+        @Override
+        public boolean stillValid(Player player) {
+            return !this.companion.isRemoved()
+                && player.distanceToSqr(this.companion) <= 64.0D;
+        }
+
+        @Override
+        public void clearContent() {
+            for (int i = 0; i < EQUIPMENT_ORDER.length; i++) {
+                this.setItem(i, ItemStack.EMPTY);
+            }
         }
     }
 
@@ -264,7 +361,8 @@ public class CompanionEntity extends PathfinderMob {
         @Override
         public net.minecraft.world.inventory.AbstractContainerMenu createMenu(int containerId,
                 net.minecraft.world.entity.player.Inventory playerInventory, Player player) {
-            return new CompanionMenu(containerId, playerInventory, companion.getInventory());
+            return new CompanionMenu(containerId, playerInventory,
+                companion.getInventory(), companion.getEquipmentContainer());
         }
     }
 }
