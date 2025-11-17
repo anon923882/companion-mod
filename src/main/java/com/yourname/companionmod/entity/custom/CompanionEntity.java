@@ -44,6 +44,7 @@ public class CompanionEntity extends PathfinderMob {
     public static final int TOTAL_SLOTS = STORAGE_SIZE + 6;
     private static final float SELF_HEAL_THRESHOLD = 0.6f;
     private static final int SELF_HEAL_COOLDOWN_TICKS = 100;
+    private static final double TELEPORT_DISTANCE_SQ = 48.0D * 48.0D;
 
     private final CompanionInventory inventory = new CompanionInventory(this);
     private int healCooldown = 0;
@@ -105,7 +106,10 @@ public class CompanionEntity extends PathfinderMob {
 
     public Player getOwner() {
         UUID uuid = this.getOwnerUUID();
-        return uuid == null ? null : this.level().getPlayerByUUID(uuid);
+        if (uuid == null || this.level() == null) {
+            return null;
+        }
+        return this.level().getPlayerByUUID(uuid);
     }
 
     public Container getInventory() {
@@ -156,7 +160,7 @@ public class CompanionEntity extends PathfinderMob {
         }
     }
 
-    // Custom follow goal
+    // Custom follow goal with teleport feature
     private static class FollowOwnerGoal extends Goal {
         private final CompanionEntity companion;
         private Player owner;
@@ -202,7 +206,18 @@ public class CompanionEntity extends PathfinderMob {
         public void tick() {
             this.companion.getLookControl().setLookAt(this.owner, 10.0F, 
                 (float)this.companion.getMaxHeadXRot());
-            if (this.companion.distanceToSqr(this.owner) > (double)(this.startDistance * this.startDistance)) {
+            
+            double distanceSq = this.companion.distanceToSqr(this.owner);
+            
+            // Teleport if too far away and in same dimension
+            if (distanceSq > TELEPORT_DISTANCE_SQ && this.owner.level() == this.companion.level()) {
+                this.companion.moveTo(this.owner.getX(), this.owner.getY(), this.owner.getZ(), 
+                    this.companion.getYRot(), this.companion.getXRot());
+                this.companion.getNavigation().stop();
+                return;
+            }
+            
+            if (distanceSq > (double)(this.startDistance * this.startDistance)) {
                 this.companion.getNavigation().moveTo(this.owner, this.speedModifier);
             }
         }
