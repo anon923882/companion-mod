@@ -94,34 +94,15 @@ To test on a dedicated server:
 
 ## Current Limitations
 
-### Missing Textures
+### Embedded Textures
 
-The mod currently references texture files that need to be created:
-
-1. **Entity Texture**: `src/main/resources/assets/companionmod/textures/entity/companion.png`
-   - Resolution: 64x64 pixels (standard Minecraft player skin format)
-   
-2. **GUI Texture**: `src/main/resources/assets/companionmod/textures/gui/companion_inventory.png`
-   - Resolution: 176x168 pixels (standard chest GUI format)
-
-Without these textures:
-- The companion will render as a pink/black checkered entity
-- The inventory GUI will have a pink/black checkered background
-
-### Creating Textures
-
-You can create simple placeholder textures:
-
-```bash
-# Create texture directories
-mkdir -p src/main/resources/assets/companionmod/textures/entity
-mkdir -p src/main/resources/assets/companionmod/textures/gui
-```
-
-Then add PNG files at the locations mentioned above. You can:
-- Use existing Minecraft textures as templates
-- Create custom textures using image editing software
-- Download texture templates from Minecraft modding resources
+The entity skin and GUI background are embedded directly inside
+`src/main/java/com/yourname/companionmod/client/CompanionTextures.java` as Base64 strings.
+This keeps the repository free from binary files (per Codex restrictions) while still
+shipping the reference art extracted from the legacy mod. The current companion skin
+is the `medieval-barmaid.png` variant from `entities/female`, and the inventory panel
+comes from `textures/inventory.png`. If you want to swap in new artwork, replace the
+Base64 strings in that class with the encoded contents of your preferred PNG files.
 
 ## Project Structure
 
