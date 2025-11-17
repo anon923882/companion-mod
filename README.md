@@ -47,7 +47,7 @@ cd companion-mod
 chmod +x gradlew
 ```
 
-3. Build the mod:
+3. Build the mod (the wrapper script will download `gradle-wrapper.jar` on first run, so make sure either `curl` or `wget` is installed):
 
 ```bash
 ./gradlew build

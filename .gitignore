@@ -3,6 +3,7 @@
 build/
 out/
 classes/
+gradle/wrapper/gradle-wrapper.jar
 
 # Eclipse
 *.launch
@@ -28,6 +29,9 @@ bin/
 # Minecraft
 run/
 logs/
+
+# Keep binary artifacts (like reference builds) out of the repo
+companionmod-*.jar
 
 # Generated sources
 src/generated/

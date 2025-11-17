@@ -114,6 +114,57 @@ esac
 
 CLASSPATH=$APP_HOME/gradle/wrapper/gradle-wrapper.jar
 
+ensure_gradle_wrapper_jar() {
+    if [ -f "$CLASSPATH" ]; then
+        return 0
+    fi
+
+    wrapper_dir=${CLASSPATH%/*}
+    props_file=$wrapper_dir/gradle-wrapper.properties
+    mkdir -p "$wrapper_dir" || return 1
+
+    distribution_url=
+    if [ -r "$props_file" ]; then
+        distribution_url=$(grep '^distributionUrl=' "$props_file" | cut -d'=' -f2-)
+    fi
+
+    version=$(printf '%s' "$distribution_url" | sed -n 's/.*gradle-\([0-9][0-9.]*\)-.*/\1/p')
+    if [ -z "$version" ]; then
+        version="8.8"
+    fi
+
+    version_tag=$version
+    case $version in
+        *.*.*) : ;;
+        *) version_tag=${version}.0 ;;
+    esac
+
+    default_url="https://raw.githubusercontent.com/gradle/gradle/v${version_tag}/gradle/wrapper/gradle-wrapper.jar"
+    wrapper_url=${GRADLE_WRAPPER_JAR_URL:-$default_url}
+
+    tmp_jar="$CLASSPATH.tmp"
+    if command -v curl >/dev/null 2>&1; then
+        curl --fail --location --silent --show-error "$wrapper_url" --output "$tmp_jar" || {
+            rm -f "$tmp_jar"
+            return 1
+        }
+    elif command -v wget >/dev/null 2>&1; then
+        wget --quiet "$wrapper_url" --output-document="$tmp_jar" || {
+            rm -f "$tmp_jar"
+            return 1
+        }
+    else
+        warn "Neither curl nor wget is available to download the Gradle wrapper JAR."
+        return 1
+    fi
+
+    mv "$tmp_jar" "$CLASSPATH" || {
+        rm -f "$tmp_jar"
+        return 1
+    }
+}
+
+ensure_gradle_wrapper_jar || die "ERROR: Unable to download gradle-wrapper.jar automatically."
 
 # Determine the Java command to use to start the JVM.
 if [ -n "$JAVA_HOME" ] ; then
