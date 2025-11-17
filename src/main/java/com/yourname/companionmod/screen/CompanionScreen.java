@@ -14,8 +14,8 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
 
     public CompanionScreen(CompanionMenu menu, Inventory playerInventory, Component title) {
         super(menu, playerInventory, title);
-        this.imageWidth = 256;
-        this.imageHeight = 256;
+        this.imageWidth = 222;
+        this.imageHeight = 222;
         this.titleLabelX = CompanionMenu.STORAGE_START_X;
         this.titleLabelY = 6;
         this.inventoryLabelX = CompanionMenu.STORAGE_START_X;
@@ -37,7 +37,7 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
     protected void renderBg(GuiGraphics guiGraphics, float partialTick, int mouseX, int mouseY) {
         int x = (this.width - this.imageWidth) / 2;
         int y = (this.height - this.imageHeight) / 2;
-        guiGraphics.blit(TEXTURE, x, y, 0, 0, this.imageWidth, this.imageHeight);
+        guiGraphics.blit(TEXTURE, x, y, 0, 0, this.imageWidth, this.imageHeight, 256, 256);
         this.renderEquipmentSlotBackdrops(guiGraphics, x, y);
     }
 

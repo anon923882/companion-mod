@@ -20,8 +20,8 @@ public class CompanionMenu extends AbstractContainerMenu {
     public static final int STORAGE_ROWS = 3;
     public static final int STORAGE_START_X = 8;
     public static final int STORAGE_START_Y = 18;
-    public static final int PLAYER_INVENTORY_START_Y = STORAGE_START_Y + SLOT_SPACING * STORAGE_ROWS + 14;
-    public static final int HOTBAR_Y = PLAYER_INVENTORY_START_Y + SLOT_SPACING * 3 + 4;
+    public static final int PLAYER_INVENTORY_START_Y = 140;
+    public static final int HOTBAR_Y = 198;
     public static final int EQUIPMENT_COLUMN_X = STORAGE_START_X + SLOT_SPACING * STORAGE_COLUMNS + 12;
     public static final int EQUIPMENT_START_Y = STORAGE_START_Y;
     public static final int HAND_SLOT_START_Y = EQUIPMENT_START_Y + SLOT_SPACING * 4 + 14;
@@ -65,8 +65,8 @@ public class CompanionMenu extends AbstractContainerMenu {
             equipmentColumnX, equipmentStartY + SLOT_SPACING * 3, ArmorItem.Type.BOOTS));
 
         int handsStartY = HAND_SLOT_START_Y;
-        this.addSlot(new Slot(companionInventory, CompanionEntity.MAIN_HAND_SLOT, equipmentColumnX, handsStartY));
-        this.addSlot(new Slot(companionInventory, CompanionEntity.OFF_HAND_SLOT,
+        this.addSlot(new MainHandSlot(companionInventory, CompanionEntity.MAIN_HAND_SLOT, equipmentColumnX, handsStartY));
+        this.addSlot(new OffHandSlot(companionInventory, CompanionEntity.OFF_HAND_SLOT,
             equipmentColumnX, handsStartY + SLOT_SPACING));
 
         for (int row = 0; row < 3; row++) {
@@ -181,6 +181,33 @@ public class CompanionMenu extends AbstractContainerMenu {
         @Override
         public boolean mayPlace(ItemStack stack) {
             return stack.getItem() instanceof ArmorItem armor && armor.getType() == this.type;
+        }
+
+        @Override
+        public int getMaxStackSize() {
+            return 1;
+        }
+    }
+
+    private static class MainHandSlot extends Slot {
+        public MainHandSlot(Container container, int index, int x, int y) {
+            super(container, index, x, y);
+        }
+
+        @Override
+        public boolean mayPlace(ItemStack stack) {
+            return isValidMainHandItem(stack);
+        }
+    }
+
+    private static class OffHandSlot extends Slot {
+        public OffHandSlot(Container container, int index, int x, int y) {
+            super(container, index, x, y);
+        }
+
+        @Override
+        public boolean mayPlace(ItemStack stack) {
+            return stack.getItem() instanceof ShieldItem;
         }
 
         @Override

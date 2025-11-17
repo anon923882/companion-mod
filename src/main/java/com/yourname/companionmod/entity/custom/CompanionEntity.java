@@ -213,9 +213,12 @@ public class CompanionEntity extends PathfinderMob {
             return;
         }
         this.suppressInventoryUpdates = true;
-        this.syncEquipmentFromInventory();
-        this.fillEmptyEquipmentSlots();
-        this.suppressInventoryUpdates = false;
+        try {
+            this.fillEmptyEquipmentSlots();
+            this.syncEquipmentFromInventory();
+        } finally {
+            this.suppressInventoryUpdates = false;
+        }
     }
 
     public void equipBestGear() {
