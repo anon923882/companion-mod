@@ -4,6 +4,7 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.yourname.companionmod.client.CompanionTextures;
 import com.yourname.companionmod.entity.custom.CompanionEntity;
 import net.minecraft.client.model.HumanoidModel;
+import net.minecraft.client.model.geom.EntityModelSet;
 import net.minecraft.client.model.geom.ModelLayers;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.client.renderer.entity.MobRenderer;
@@ -14,7 +15,9 @@ import net.minecraft.resources.ResourceLocation;
 public class CompanionRenderer extends MobRenderer<CompanionEntity, HumanoidModel<CompanionEntity>> {
     public CompanionRenderer(EntityRendererProvider.Context context) {
         super(context, new HumanoidModel<>(context.bakeLayer(ModelLayers.PLAYER_SLIM)), 0.5f);
+        EntityModelSet modelSet = context.getModelSet();
         this.addLayer(new HumanoidArmorLayer<>(this,
+            modelSet,
             context.getModelManager(),
             ModelLayers.PLAYER_SLIM_INNER_ARMOR,
             ModelLayers.PLAYER_SLIM_OUTER_ARMOR));
