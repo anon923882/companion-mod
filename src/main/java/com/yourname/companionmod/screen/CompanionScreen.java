@@ -27,9 +27,15 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
         super.init();
         int x = (this.width - this.imageWidth) / 2;
         int y = (this.height - this.imageHeight) / 2;
-        this.addRenderableWidget(Button.builder(Component.translatable("gui.companionmod.equip_best"),
+        
+        // Position button to the right of equipment slots, below title
+        int buttonX = x + CompanionMenu.EQUIPMENT_COLUMN_X;
+        int buttonY = y + 30; // Below the title, above armor slots
+        
+        this.addRenderableWidget(Button.builder(
+            Component.translatable("gui.companionmod.equip_best"),
             button -> this.sendEquipBestRequest())
-            .bounds(x + this.imageWidth - 98, y + 6, 90, 20)
+            .bounds(buttonX, buttonY, 50, 20)
             .build());
     }
 
