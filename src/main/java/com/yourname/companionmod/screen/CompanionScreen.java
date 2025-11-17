@@ -5,16 +5,25 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Inventory;
 
 public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
-    private static final int PANEL_OUTLINE_COLOR = 0xFF000000;
-    private static final int PANEL_BACKGROUND_COLOR = 0xFF151515;
+    private static final ResourceLocation GENERIC_CONTAINER_TEXTURE =
+        ResourceLocation.withDefaultNamespace("textures/gui/container/generic_54.png");
+    private static final int CHEST_TEXTURE_WIDTH = 176;
+    private static final int PLAYER_SECTION_HEIGHT = 96;
+    private static final int EQUIPMENT_PANEL_WIDTH = 28;
+    private static final int EQUIPMENT_PANEL_BORDER = 0xFF37291B;
+    private static final int EQUIPMENT_PANEL_BACKGROUND = 0xFF27190F;
+    private static final int SLOT_OUTLINE = 0xFF000000;
+    private static final int SLOT_FILL = 0xFFC6C6C6;
 
     public CompanionScreen(CompanionMenu menu, Inventory playerInventory, Component title) {
         super(menu, playerInventory, title);
-        this.imageWidth = 222;
-        this.imageHeight = 222;
+        int storageSectionHeight = getStorageSectionHeight();
+        this.imageWidth = CHEST_TEXTURE_WIDTH + EQUIPMENT_PANEL_WIDTH;
+        this.imageHeight = storageSectionHeight + PLAYER_SECTION_HEIGHT;
         this.titleLabelX = CompanionMenu.STORAGE_START_X;
         this.titleLabelY = 6;
         this.inventoryLabelX = CompanionMenu.STORAGE_START_X;
@@ -25,8 +34,8 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
     protected void init() {
         super.init();
         int buttonWidth = 90;
-        int buttonX = this.leftPos + this.imageWidth - buttonWidth - 10;
-        int buttonY = this.topPos + 4;
+        int buttonX = this.leftPos + this.imageWidth - buttonWidth - 6;
+        int buttonY = this.topPos + 6;
 
         this.addRenderableWidget(Button.builder(
             Component.translatable("gui.companionmod.equip_best"),
@@ -40,24 +49,8 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
         int x = this.leftPos;
         int y = this.topPos;
 
-        renderPanelBackground(guiGraphics, x, y, this.imageWidth, this.imageHeight);
-
-        renderSlotPanel(guiGraphics, x + CompanionMenu.STORAGE_START_X,
-            y + CompanionMenu.STORAGE_START_Y, CompanionMenu.STORAGE_COLUMNS, CompanionMenu.STORAGE_ROWS);
-
-        renderSlotPanel(guiGraphics, x + CompanionMenu.STORAGE_START_X,
-            y + CompanionMenu.PLAYER_INVENTORY_START_Y, 9, 3);
-
-        renderSlotPanel(guiGraphics, x + CompanionMenu.STORAGE_START_X,
-            y + CompanionMenu.HOTBAR_Y, 9, 1);
-
-        renderSlotPanel(guiGraphics, x + CompanionMenu.EQUIPMENT_COLUMN_X,
-            y + CompanionMenu.EQUIPMENT_START_Y, 1, 4);
-
-        renderSlotPanel(guiGraphics, x + CompanionMenu.EQUIPMENT_COLUMN_X,
-            y + CompanionMenu.HAND_SLOT_START_Y, 1, 2);
-
-        this.renderEquipmentSlotBackdrops(guiGraphics, x, y);
+        renderChestBackground(guiGraphics, x, y);
+        renderEquipmentColumn(guiGraphics, x, y);
     }
 
     @Override
@@ -76,43 +69,43 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
     private void renderEquipmentSlotBackdrops(GuiGraphics guiGraphics, int originX, int originY) {
         int columnX = originX + CompanionMenu.EQUIPMENT_COLUMN_X - 1;
         int slotSize = CompanionMenu.SLOT_SPACING;
-        
-        // Render armor slot backdrops
+
         for (int i = 0; i < 4; i++) {
             int slotY = originY + CompanionMenu.EQUIPMENT_START_Y - 1 + i * slotSize;
             renderSlot(guiGraphics, columnX, slotY);
         }
 
-        // Render hand slot backdrops
         int mainHandY = originY + CompanionMenu.HAND_SLOT_START_Y - 1;
         renderSlot(guiGraphics, columnX, mainHandY);
         renderSlot(guiGraphics, columnX, mainHandY + slotSize);
     }
 
-    private static void renderPanelBackground(GuiGraphics guiGraphics, int x, int y, int width, int height) {
-        guiGraphics.fill(x, y, x + width, y + height, PANEL_OUTLINE_COLOR);
-        guiGraphics.fill(x + 1, y + 1, x + width - 1, y + height - 1, PANEL_BACKGROUND_COLOR);
+    private void renderChestBackground(GuiGraphics guiGraphics, int x, int y) {
+        int storageSectionHeight = getStorageSectionHeight();
+        guiGraphics.blit(GENERIC_CONTAINER_TEXTURE, x, y, 0, 0, CHEST_TEXTURE_WIDTH, storageSectionHeight);
+        guiGraphics.blit(GENERIC_CONTAINER_TEXTURE, x, y + storageSectionHeight, 0, 126, CHEST_TEXTURE_WIDTH,
+            PLAYER_SECTION_HEIGHT);
     }
 
-    private static void renderSlotPanel(GuiGraphics guiGraphics, int startX, int startY, int columns, int rows) {
-        int totalWidth = columns * CompanionMenu.SLOT_SPACING;
-        int totalHeight = rows * CompanionMenu.SLOT_SPACING;
+    private void renderEquipmentColumn(GuiGraphics guiGraphics, int originX, int originY) {
+        int panelX = originX + CHEST_TEXTURE_WIDTH;
+        int panelRight = panelX + (this.imageWidth - CHEST_TEXTURE_WIDTH);
 
-        guiGraphics.fill(startX - 3, startY - 3, startX + totalWidth + 3, startY + totalHeight + 3, PANEL_OUTLINE_COLOR);
-        guiGraphics.fill(startX - 2, startY - 2, startX + totalWidth + 2, startY + totalHeight + 2, PANEL_BACKGROUND_COLOR);
+        guiGraphics.fill(panelX, originY, panelRight, originY + this.imageHeight, EQUIPMENT_PANEL_BORDER);
+        guiGraphics.fill(panelX + 1, originY + 1, panelRight - 1, originY + this.imageHeight - 1,
+            EQUIPMENT_PANEL_BACKGROUND);
 
-        for (int row = 0; row < rows; row++) {
-            for (int col = 0; col < columns; col++) {
-                int slotX = startX + col * CompanionMenu.SLOT_SPACING - 1;
-                int slotY = startY + row * CompanionMenu.SLOT_SPACING - 1;
-                renderSlot(guiGraphics, slotX, slotY);
-            }
-        }
+        renderEquipmentSlotBackdrops(guiGraphics, originX, originY);
     }
 
     private static void renderSlot(GuiGraphics guiGraphics, int slotX, int slotY) {
-        guiGraphics.fill(slotX, slotY, slotX + CompanionMenu.SLOT_SPACING, slotY + CompanionMenu.SLOT_SPACING, 0xFF2B2B2B);
+        guiGraphics.fill(slotX, slotY, slotX + CompanionMenu.SLOT_SPACING, slotY + CompanionMenu.SLOT_SPACING,
+            SLOT_OUTLINE);
         guiGraphics.fill(slotX + 1, slotY + 1, slotX + CompanionMenu.SLOT_SPACING - 1,
-            slotY + CompanionMenu.SLOT_SPACING - 1, 0xFF8B8B8B);
+            slotY + CompanionMenu.SLOT_SPACING - 1, SLOT_FILL);
+    }
+
+    private static int getStorageSectionHeight() {
+        return 17 + CompanionMenu.STORAGE_ROWS * CompanionMenu.SLOT_SPACING;
     }
 }
