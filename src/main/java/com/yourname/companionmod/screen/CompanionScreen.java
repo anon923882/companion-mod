@@ -28,14 +28,14 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
         int x = (this.width - this.imageWidth) / 2;
         int y = (this.height - this.imageHeight) / 2;
         
-        // Position button to the right of equipment slots, below title
-        int buttonX = x + CompanionMenu.EQUIPMENT_COLUMN_X;
-        int buttonY = y + 30; // Below the title, above armor slots
+        // Position button below companion storage, above player inventory, right-aligned
+        int buttonX = x + this.imageWidth - 90;
+        int buttonY = y + CompanionMenu.STORAGE_START_Y + CompanionMenu.STORAGE_ROWS * CompanionMenu.SLOT_SPACING + 8;
         
         this.addRenderableWidget(Button.builder(
             Component.translatable("gui.companionmod.equip_best"),
             button -> this.sendEquipBestRequest())
-            .bounds(buttonX, buttonY, 50, 20)
+            .bounds(buttonX, buttonY, 80, 20)
             .build());
     }
 
@@ -63,11 +63,14 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
     private void renderEquipmentSlotBackdrops(GuiGraphics guiGraphics, int originX, int originY) {
         int columnX = originX + CompanionMenu.EQUIPMENT_COLUMN_X - 1;
         int slotSize = CompanionMenu.SLOT_SPACING;
+        
+        // Render armor slot backdrops
         for (int i = 0; i < 4; i++) {
             int slotY = originY + CompanionMenu.EQUIPMENT_START_Y - 1 + i * slotSize;
             renderSlot(guiGraphics, columnX, slotY);
         }
 
+        // Render hand slot backdrops
         int mainHandY = originY + CompanionMenu.HAND_SLOT_START_Y - 1;
         renderSlot(guiGraphics, columnX, mainHandY);
         renderSlot(guiGraphics, columnX, mainHandY + slotSize);
