@@ -14,16 +14,16 @@ public final class CompanionGuiTextures {
     public static final int UPGRADE_TOP_HEIGHT = 7;
     public static final int UPGRADE_BOTTOM_HEIGHT = 6;
 
-    private static final String SOPHISTICATED_BACKPACKS = "sophisticatedbackpacks";
+    private static final String COMPANION_MOD = "companionmod";
 
     public static final ResourceLocation STORAGE_BACKGROUND_9 = ResourceLocation.fromNamespaceAndPath(
-        SOPHISTICATED_BACKPACKS,
+        COMPANION_MOD,
         "textures/gui/storage_background_9.png");
     public static final ResourceLocation GUI_CONTROLS = ResourceLocation.fromNamespaceAndPath(
-        SOPHISTICATED_BACKPACKS,
+        COMPANION_MOD,
         "textures/gui/gui_controls.png");
     public static final ResourceLocation SLOTS_BACKGROUND = ResourceLocation.fromNamespaceAndPath(
-        SOPHISTICATED_BACKPACKS,
+        COMPANION_MOD,
         "textures/gui/slots_background.png");
 
     private CompanionGuiTextures() {}
