@@ -1,12 +1,14 @@
 package com.yourname.companionmod.entity.custom;
 
 import com.yourname.companionmod.menu.CompanionMenu;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.Container;
@@ -15,11 +17,18 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.PathfinderMob;
+import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.goal.*;
+import net.minecraft.world.entity.ai.goal.target.HurtByTargetGoal;
+import net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal;
+import net.minecraft.world.entity.animal.Animal;
+import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.ExperienceOrb;
 import net.minecraft.world.item.ArmorItem;
 import net.minecraft.world.item.AxeItem;
 import net.minecraft.world.item.ItemStack;
@@ -28,13 +37,31 @@ import net.minecraft.world.item.SwordItem;
 import net.minecraft.world.item.TieredItem;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.gameevent.GameEvent;
+import net.minecraft.world.phys.AABB;
+import java.util.List;
 import java.util.UUID;
 
 public class CompanionEntity extends PathfinderMob {
-    private static final EntityDataAccessor<String> OWNER_UUID = 
+    private static final EntityDataAccessor<String> OWNER_UUID =
         SynchedEntityData.defineId(CompanionEntity.class, EntityDataSerializers.STRING);
+    private static final EntityDataAccessor<Integer> LEVEL =
+        SynchedEntityData.defineId(CompanionEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Integer> EXPERIENCE =
+        SynchedEntityData.defineId(CompanionEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Boolean> XP_PICKUP_ENABLED =
+        SynchedEntityData.defineId(CompanionEntity.class, EntityDataSerializers.BOOLEAN);
+    private static final EntityDataAccessor<Boolean> HUNT_PASSIVES =
+        SynchedEntityData.defineId(CompanionEntity.class, EntityDataSerializers.BOOLEAN);
+    private static final EntityDataAccessor<Boolean> HUNT_HOSTILES =
+        SynchedEntityData.defineId(CompanionEntity.class, EntityDataSerializers.BOOLEAN);
+    private static final EntityDataAccessor<Boolean> AUTO_EQUIP =
+        SynchedEntityData.defineId(CompanionEntity.class, EntityDataSerializers.BOOLEAN);
     
-    public static final int STORAGE_SIZE = 27;
+    private static final int STORAGE_ROWS = 3;
+    private static final int STORAGE_COLUMNS = 9;
+    private static final int HOTBAR_SIZE = 9;
+    public static final int STORAGE_SIZE = STORAGE_ROWS * STORAGE_COLUMNS + HOTBAR_SIZE; // 36 slots like a player
+    public static final int HOTBAR_START = STORAGE_ROWS * STORAGE_COLUMNS;
     public static final int MAIN_HAND_SLOT = STORAGE_SIZE;
     public static final int OFF_HAND_SLOT = STORAGE_SIZE + 1;
     public static final int BOOTS_SLOT = STORAGE_SIZE + 2;
@@ -44,10 +71,24 @@ public class CompanionEntity extends PathfinderMob {
     public static final int TOTAL_SLOTS = STORAGE_SIZE + 6;
     private static final float SELF_HEAL_THRESHOLD = 0.6f;
     private static final int SELF_HEAL_COOLDOWN_TICKS = 100;
+    private static final double TELEPORT_DISTANCE_SQR = 20 * 20;
+    private static final int TELEPORT_ATTEMPTS = 10;
+    private static final double FOLLOW_AFTER_TELEPORT_SPEED = 1.1D;
+    private static final int FORCED_FOLLOW_AFTER_TELEPORT_TICKS = 60;
+    private static final double FORCED_FOLLOW_DESIRED_DISTANCE_SQR = 4.0D;
+
+    private static final int MAX_LEVEL = 20;
+    private static final double BASE_MAX_HEALTH = 20.0D;
+    private static final double HEALTH_PER_LEVEL = 1.5D;
+    private static final double ATTACK_PER_LEVEL = 0.2D;
+    private static final double XP_ORB_SEARCH_RADIUS = 4.0D;
+    private static final double PASSIVE_HUNT_RANGE = 16.0D;
+    private static final double HOSTILE_HUNT_RANGE = 24.0D;
 
     private final CompanionInventory inventory = new CompanionInventory(this);
     private int healCooldown = 0;
     private boolean suppressInventoryUpdates = false;
+    private int forcedFollowTicks = 0;
 
     public CompanionEntity(EntityType<? extends PathfinderMob> entityType, Level level) {
         super(entityType, level);
@@ -55,24 +96,37 @@ public class CompanionEntity extends PathfinderMob {
 
     public static AttributeSupplier.Builder createAttributes() {
         return PathfinderMob.createMobAttributes()
-            .add(Attributes.MAX_HEALTH, 20.0D)
+            .add(Attributes.MAX_HEALTH, BASE_MAX_HEALTH)
             .add(Attributes.MOVEMENT_SPEED, 0.3D)
-            .add(Attributes.FOLLOW_RANGE, 32.0D);
+            .add(Attributes.FOLLOW_RANGE, 32.0D)
+            .add(Attributes.ATTACK_DAMAGE, 4.0D);
     }
 
     @Override
     protected void defineSynchedData(SynchedEntityData.Builder builder) {
         super.defineSynchedData(builder);
         builder.define(OWNER_UUID, "");
+        builder.define(LEVEL, 1);
+        builder.define(EXPERIENCE, 0);
+        builder.define(XP_PICKUP_ENABLED, true);
+        builder.define(HUNT_PASSIVES, false);
+        builder.define(HUNT_HOSTILES, true);
+        builder.define(AUTO_EQUIP, true);
     }
 
     @Override
     protected void registerGoals() {
         this.goalSelector.addGoal(0, new FloatGoal(this));
-        this.goalSelector.addGoal(1, new FollowOwnerGoal(this));
-        this.goalSelector.addGoal(2, new LookAtPlayerGoal(this, Player.class, 8.0F));
-        this.goalSelector.addGoal(3, new RandomLookAroundGoal(this));
-        this.goalSelector.addGoal(4, new WaterAvoidingRandomStrollGoal(this, 0.8D));
+        this.goalSelector.addGoal(1, new CompanionMeleeAttackGoal(this));
+        this.goalSelector.addGoal(2, new FollowOwnerGoal(this));
+        this.goalSelector.addGoal(3, new LookAtPlayerGoal(this, Player.class, 8.0F));
+        this.goalSelector.addGoal(4, new RandomLookAroundGoal(this));
+        this.goalSelector.addGoal(5, new WaterAvoidingRandomStrollGoal(this, 0.8D));
+        this.targetSelector.addGoal(1, new HurtByTargetGoal(this));
+        this.targetSelector.addGoal(2, new HuntGoal(this, HOSTILE_HUNT_RANGE,
+            living -> living instanceof Enemy, this::isHostileHuntEnabled));
+        this.targetSelector.addGoal(3, new HuntGoal(this, PASSIVE_HUNT_RANGE,
+            living -> living instanceof Animal && !(living instanceof Enemy), this::isPassiveHuntEnabled));
     }
 
     @Override
@@ -120,6 +174,9 @@ public class CompanionEntity extends PathfinderMob {
                 this.healCooldown--;
             }
             this.tryConsumeHeldFood();
+            this.tryTeleportToOwner();
+            this.updateForcedFollow();
+            this.collectNearbyExperience();
         }
     }
 
@@ -130,6 +187,12 @@ public class CompanionEntity extends PathfinderMob {
             tag.putString("OwnerUUID", this.getOwnerUUID().toString());
         }
         tag.put("Inventory", this.inventory.createTag(this.registryAccess()));
+        tag.putInt("CompanionLevel", this.getCompanionLevel());
+        tag.putInt("CompanionExperience", this.getExperience());
+        tag.putBoolean("PickupXp", this.isExperiencePickupEnabled());
+        tag.putBoolean("HuntPassives", this.isPassiveHuntEnabled());
+        tag.putBoolean("HuntHostiles", this.isHostileHuntEnabled());
+        tag.putBoolean("AutoEquip", this.isAutoEquipEnabled());
     }
 
     @Override
@@ -142,6 +205,17 @@ public class CompanionEntity extends PathfinderMob {
             this.inventory.fromTag(tag.getList("Inventory", 10), this.registryAccess());
             this.onInventoryChanged();
         }
+        if (tag.contains("CompanionLevel")) {
+            this.entityData.set(LEVEL, Math.max(1, tag.getInt("CompanionLevel")));
+            this.applyLevelBonuses();
+        }
+        if (tag.contains("CompanionExperience")) {
+            this.entityData.set(EXPERIENCE, Math.max(0, tag.getInt("CompanionExperience")));
+        }
+        this.entityData.set(XP_PICKUP_ENABLED, tag.getBoolean("PickupXp"));
+        this.entityData.set(HUNT_PASSIVES, tag.getBoolean("HuntPassives"));
+        this.entityData.set(HUNT_HOSTILES, tag.contains("HuntHostiles") ? tag.getBoolean("HuntHostiles") : true);
+        this.entityData.set(AUTO_EQUIP, !tag.contains("AutoEquip") || tag.getBoolean("AutoEquip"));
     }
 
     @Override
@@ -213,8 +287,13 @@ public class CompanionEntity extends PathfinderMob {
         }
         this.suppressInventoryUpdates = true;
         try {
-            this.fillEmptyEquipmentSlots();
-            this.syncEquipmentFromInventory();
+            if (this.isAutoEquipEnabled()) {
+                this.evaluateBestEquipment(true);
+                this.syncEquipmentFromInventory();
+            } else {
+                this.fillEmptyEquipmentSlots();
+                this.syncEquipmentFromInventory();
+            }
         } finally {
             this.suppressInventoryUpdates = false;
         }
@@ -225,15 +304,19 @@ public class CompanionEntity extends PathfinderMob {
             return;
         }
         this.runWithInventorySilenced(() -> {
-            this.equipBestWeapon(true);
-            this.equipShield(true);
-            this.equipBestArmor(ArmorItem.Type.BOOTS, BOOTS_SLOT, true);
-            this.equipBestArmor(ArmorItem.Type.LEGGINGS, LEGS_SLOT, true);
-            this.equipBestArmor(ArmorItem.Type.CHESTPLATE, CHEST_SLOT, true);
-            this.equipBestArmor(ArmorItem.Type.HELMET, HELMET_SLOT, true);
+            this.evaluateBestEquipment(true);
             this.syncEquipmentFromInventory();
         });
         this.onInventoryChanged();
+    }
+
+    private void evaluateBestEquipment(boolean allowReplacement) {
+        this.equipBestWeapon(allowReplacement);
+        this.equipShield(allowReplacement);
+        this.equipBestArmor(ArmorItem.Type.BOOTS, BOOTS_SLOT, allowReplacement);
+        this.equipBestArmor(ArmorItem.Type.LEGGINGS, LEGS_SLOT, allowReplacement);
+        this.equipBestArmor(ArmorItem.Type.CHESTPLATE, CHEST_SLOT, allowReplacement);
+        this.equipBestArmor(ArmorItem.Type.HELMET, HELMET_SLOT, allowReplacement);
     }
 
     private void fillEmptyEquipmentSlots() {
@@ -363,15 +446,294 @@ public class CompanionEntity extends PathfinderMob {
         if (this.getHealth() / this.getMaxHealth() > SELF_HEAL_THRESHOLD) {
             return;
         }
-        ItemStack held = this.inventory.getItem(MAIN_HAND_SLOT);
-        if (held.isEmpty() || !held.has(DataComponents.FOOD)) {
+        int slot = this.findFoodSlot();
+        if (slot < 0) {
             return;
         }
+        ItemStack stack = this.inventory.getItem(slot);
+        if (stack.isEmpty()) {
+            return;
+        }
+        ItemStack single = stack.split(1);
+        this.inventory.setItem(slot, stack);
+        ItemStack leftovers = this.eat(this.level(), single);
+        if (!leftovers.isEmpty()) {
+            leftovers = this.storeOrDrop(leftovers);
+            if (!leftovers.isEmpty()) {
+                this.spawnAtLocation(leftovers);
+            }
+        }
+        if (slot >= STORAGE_SIZE) {
+            this.syncEquipmentFromInventory();
+        }
         this.level().gameEvent(this, GameEvent.EAT, this.position());
-        ItemStack result = held.getItem().finishUsingItem(held, this.level(), this);
-        this.inventory.setItem(MAIN_HAND_SLOT, result);
         this.playSound(SoundEvents.GENERIC_EAT, 1.0F, 1.0F);
         this.healCooldown = SELF_HEAL_COOLDOWN_TICKS;
+    }
+
+    private int findFoodSlot() {
+        ItemStack mainHand = this.inventory.getItem(MAIN_HAND_SLOT);
+        if (!mainHand.isEmpty() && mainHand.has(DataComponents.FOOD)) {
+            return MAIN_HAND_SLOT;
+        }
+        ItemStack offHand = this.inventory.getItem(OFF_HAND_SLOT);
+        if (!offHand.isEmpty() && offHand.has(DataComponents.FOOD)) {
+            return OFF_HAND_SLOT;
+        }
+        for (int i = 0; i < STORAGE_SIZE; i++) {
+            ItemStack candidate = this.inventory.getItem(i);
+            if (!candidate.isEmpty() && candidate.has(DataComponents.FOOD)) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private ItemStack storeOrDrop(ItemStack stack) {
+        for (int i = 0; i < STORAGE_SIZE; i++) {
+            ItemStack existing = this.inventory.getItem(i);
+            if (existing.isEmpty()) {
+                this.inventory.setItem(i, stack);
+                return ItemStack.EMPTY;
+            }
+            if (ItemStack.isSameItemSameComponents(existing, stack)
+                    && existing.getCount() < existing.getMaxStackSize()) {
+                int transferable = Math.min(stack.getCount(), existing.getMaxStackSize() - existing.getCount());
+                existing.grow(transferable);
+                stack.shrink(transferable);
+                if (stack.isEmpty()) {
+                    return ItemStack.EMPTY;
+                }
+            }
+        }
+        return stack;
+    }
+
+    private void tryTeleportToOwner() {
+        Player owner = this.getOwner();
+        if (owner == null || owner.level() != this.level() || owner.isSpectator()) {
+            return;
+        }
+        if (this.distanceToSqr(owner) < TELEPORT_DISTANCE_SQR) {
+            return;
+        }
+
+        BlockPos ownerPos = owner.blockPosition();
+        for (int i = 0; i < TELEPORT_ATTEMPTS; i++) {
+            BlockPos target = ownerPos.offset(this.random.nextInt(3) - 1, this.random.nextInt(3) - 1,
+                this.random.nextInt(3) - 1);
+            if (this.canTeleportTo(target)) {
+                this.teleportTo(target.getX() + 0.5D, target.getY(), target.getZ() + 0.5D);
+                this.getNavigation().stop();
+                this.resumeFollowingOwner(owner);
+                return;
+            }
+        }
+
+        this.teleportTo(owner.getX(), owner.getY(), owner.getZ());
+        this.getNavigation().stop();
+        this.resumeFollowingOwner(owner);
+    }
+
+    private boolean canTeleportTo(BlockPos target) {
+        if (!this.level().isLoaded(target) || !this.level().getWorldBorder().isWithinBounds(target)) {
+            return false;
+        }
+        BlockPos below = target.below();
+        if (!this.level().getBlockState(below).isSolidRender(this.level(), below)) {
+            return false;
+        }
+        if (!this.level().isEmptyBlock(target) || !this.level().isEmptyBlock(target.above())) {
+            return false;
+        }
+        return this.level().noCollision(this, this.getBoundingBox().move(
+            target.getX() + 0.5D - this.getX(),
+            target.getY() - this.getY(),
+            target.getZ() + 0.5D - this.getZ()));
+    }
+
+    private void resumeFollowingOwner(Player owner) {
+        this.forcedFollowTicks = FORCED_FOLLOW_AFTER_TELEPORT_TICKS;
+        this.getNavigation().moveTo(owner, FOLLOW_AFTER_TELEPORT_SPEED);
+        this.getLookControl().setLookAt(owner, 10.0F, this.getMaxHeadXRot());
+    }
+
+    private void updateForcedFollow() {
+        if (this.forcedFollowTicks <= 0) {
+            return;
+        }
+
+        Player owner = this.getOwner();
+        if (owner == null || owner.isSpectator() || owner.level() != this.level()) {
+            this.forcedFollowTicks = 0;
+            return;
+        }
+
+        this.forcedFollowTicks--;
+        if (this.distanceToSqr(owner) > FORCED_FOLLOW_DESIRED_DISTANCE_SQR) {
+            this.getNavigation().moveTo(owner, FOLLOW_AFTER_TELEPORT_SPEED);
+            this.getLookControl().setLookAt(owner, 10.0F, this.getMaxHeadXRot());
+        } else if (this.forcedFollowTicks < FORCED_FOLLOW_AFTER_TELEPORT_TICKS / 2) {
+            this.forcedFollowTicks = 0;
+        }
+    }
+
+    public int getCompanionLevel() {
+        return this.entityData.get(LEVEL);
+    }
+
+    public int getExperience() {
+        return this.entityData.get(EXPERIENCE);
+    }
+
+    public int getExperienceToNextLevel() {
+        int level = this.getCompanionLevel();
+        return level >= MAX_LEVEL ? 0 : this.getExperienceRequirementForLevel(level);
+    }
+
+    private int getExperienceRequirementForLevel(int level) {
+        return (int)(25 + Math.pow(level, 1.4D) * 12);
+    }
+
+    public boolean isExperiencePickupEnabled() {
+        return this.entityData.get(XP_PICKUP_ENABLED);
+    }
+
+    public boolean isPassiveHuntEnabled() {
+        return this.entityData.get(HUNT_PASSIVES);
+    }
+
+    public boolean isHostileHuntEnabled() {
+        return this.entityData.get(HUNT_HOSTILES);
+    }
+
+    public boolean isAutoEquipEnabled() {
+        return this.entityData.get(AUTO_EQUIP);
+    }
+
+    public void toggleExperiencePickup() {
+        this.entityData.set(XP_PICKUP_ENABLED, !this.isExperiencePickupEnabled());
+    }
+
+    public void togglePassiveHunting() {
+        this.entityData.set(HUNT_PASSIVES, !this.isPassiveHuntEnabled());
+    }
+
+    public void toggleHostileHunting() {
+        this.entityData.set(HUNT_HOSTILES, !this.isHostileHuntEnabled());
+    }
+
+    public void toggleAutoEquip() {
+        this.entityData.set(AUTO_EQUIP, !this.isAutoEquipEnabled());
+        this.onInventoryChanged();
+    }
+
+    private void addExperience(int value) {
+        if (value <= 0 || this.level().isClientSide) {
+            return;
+        }
+        int level = this.getCompanionLevel();
+        int experience = this.getExperience();
+        int remaining = value;
+
+        while (remaining > 0 && level < MAX_LEVEL) {
+            int needed = this.getExperienceRequirementForLevel(level);
+            if (remaining + experience >= needed) {
+                remaining -= Math.max(0, needed - experience);
+                level++;
+                experience = 0;
+                this.applyLevelBonuses();
+            } else {
+                experience += remaining;
+                remaining = 0;
+            }
+        }
+
+        if (level >= MAX_LEVEL) {
+            experience = 0;
+        }
+
+        this.entityData.set(EXPERIENCE, experience);
+        this.entityData.set(LEVEL, level);
+    }
+
+    private void applyLevelBonuses() {
+        AttributeInstance health = this.getAttribute(Attributes.MAX_HEALTH);
+        AttributeInstance attack = this.getAttribute(Attributes.ATTACK_DAMAGE);
+        if (health != null) {
+            double newMax = Math.min(BASE_MAX_HEALTH + HEALTH_PER_LEVEL * (this.getCompanionLevel() - 1),
+                BASE_MAX_HEALTH + HEALTH_PER_LEVEL * (MAX_LEVEL - 1));
+            health.setBaseValue(newMax);
+            if (this.getHealth() > newMax) {
+                this.setHealth((float)newMax);
+            }
+        }
+        if (attack != null) {
+            double newAttack = 4.0D + ATTACK_PER_LEVEL * (this.getCompanionLevel() - 1);
+            attack.setBaseValue(newAttack);
+        }
+    }
+
+    private void collectNearbyExperience() {
+        if (!this.isExperiencePickupEnabled()) {
+            return;
+        }
+        AABB searchArea = this.getBoundingBox().inflate(XP_ORB_SEARCH_RADIUS);
+        List<ExperienceOrb> orbs = this.level().getEntitiesOfClass(ExperienceOrb.class, searchArea,
+            orb -> !orb.isRemoved() && orb.isAlive());
+        for (ExperienceOrb orb : orbs) {
+            this.addExperience(orb.value);
+            orb.discard();
+            this.level().playSound(null, this, SoundEvents.EXPERIENCE_ORB_PICKUP, this.getSoundSource(), 0.2F,
+                0.95F + this.level().random.nextFloat() * 0.1F);
+        }
+    }
+
+    @Override
+    public boolean killedEntity(ServerLevel level, LivingEntity target) {
+        boolean result = super.killedEntity(level, target);
+        int reward = Math.max(1, target.getExperienceReward(level, this) / 2);
+        this.addExperience(reward);
+        return result;
+    }
+
+    private static class CompanionMeleeAttackGoal extends MeleeAttackGoal {
+        public CompanionMeleeAttackGoal(CompanionEntity companion) {
+            super(companion, 1.2D, true);
+        }
+
+        protected double getAttackReachSqr(LivingEntity enemy) {
+            return 2.0F + enemy.getBbWidth();
+        }
+    }
+
+    private static class HuntGoal extends NearestAttackableTargetGoal<LivingEntity> {
+        private final CompanionEntity companion;
+        private final java.util.function.BooleanSupplier enabledCheck;
+
+        public HuntGoal(CompanionEntity companion, double range,
+                java.util.function.Predicate<LivingEntity> matcher, java.util.function.BooleanSupplier enabledCheck) {
+            super(companion, LivingEntity.class, 10, true, true, matcher);
+            this.companion = companion;
+            this.enabledCheck = enabledCheck;
+            this.targetConditions.range((float)range);
+        }
+
+        @Override
+        public boolean canUse() {
+            if (!this.enabledCheck.getAsBoolean()) {
+                return false;
+            }
+            if (this.companion.getOwner() == null) {
+                return false;
+            }
+            return super.canUse();
+        }
+
+        @Override
+        public boolean canContinueToUse() {
+            return this.enabledCheck.getAsBoolean() && super.canContinueToUse();
+        }
     }
 
     private static class CompanionInventory extends SimpleContainer {
