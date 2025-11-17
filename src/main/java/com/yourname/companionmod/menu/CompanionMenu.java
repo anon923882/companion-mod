@@ -15,6 +15,17 @@ import net.minecraft.world.item.SwordItem;
 import net.minecraft.world.item.TieredItem;
 
 public class CompanionMenu extends AbstractContainerMenu {
+    public static final int SLOT_SPACING = 18;
+    public static final int STORAGE_COLUMNS = 9;
+    public static final int STORAGE_ROWS = 3;
+    public static final int STORAGE_START_X = 8;
+    public static final int STORAGE_START_Y = 18;
+    public static final int PLAYER_INVENTORY_START_Y = STORAGE_START_Y + SLOT_SPACING * STORAGE_ROWS + 14;
+    public static final int HOTBAR_Y = PLAYER_INVENTORY_START_Y + SLOT_SPACING * 3 + 4;
+    public static final int EQUIPMENT_COLUMN_X = STORAGE_START_X + SLOT_SPACING * STORAGE_COLUMNS + 12;
+    public static final int EQUIPMENT_START_Y = STORAGE_START_Y;
+    public static final int HAND_SLOT_START_Y = EQUIPMENT_START_Y + SLOT_SPACING * 4 + 14;
+
     private final Container companionInventory;
     private final CompanionEntity companion;
 
@@ -33,45 +44,42 @@ public class CompanionMenu extends AbstractContainerMenu {
 
         companionInventory.startOpen(playerInventory.player);
 
-        int storageStartX = 70;
-        int storageStartY = 38;
-        for (int row = 0; row < 3; row++) {
-            for (int col = 0; col < 9; col++) {
-                int index = col + row * 9;
-                this.addSlot(new Slot(companionInventory, index, storageStartX + col * 18,
-                    storageStartY + row * 18));
+        for (int row = 0; row < STORAGE_ROWS; row++) {
+            for (int col = 0; col < STORAGE_COLUMNS; col++) {
+                int index = col + row * STORAGE_COLUMNS;
+                this.addSlot(new Slot(companionInventory, index,
+                    STORAGE_START_X + col * SLOT_SPACING,
+                    STORAGE_START_Y + row * SLOT_SPACING));
             }
         }
 
-        // Main-hand and off-hand slots
-        int armorX = 26;
-        int armorY = 28;
-        this.addSlot(new Slot(companionInventory, CompanionEntity.MAIN_HAND_SLOT, armorX, armorY + 78));
-        this.addSlot(new Slot(companionInventory, CompanionEntity.OFF_HAND_SLOT, armorX, armorY + 96));
+        int equipmentColumnX = EQUIPMENT_COLUMN_X;
+        int equipmentStartY = EQUIPMENT_START_Y;
+        this.addSlot(new ArmorSlot(companionInventory, CompanionEntity.HELMET_SLOT,
+            equipmentColumnX, equipmentStartY, ArmorItem.Type.HELMET));
+        this.addSlot(new ArmorSlot(companionInventory, CompanionEntity.CHEST_SLOT,
+            equipmentColumnX, equipmentStartY + SLOT_SPACING, ArmorItem.Type.CHESTPLATE));
+        this.addSlot(new ArmorSlot(companionInventory, CompanionEntity.LEGS_SLOT,
+            equipmentColumnX, equipmentStartY + SLOT_SPACING * 2, ArmorItem.Type.LEGGINGS));
+        this.addSlot(new ArmorSlot(companionInventory, CompanionEntity.BOOTS_SLOT,
+            equipmentColumnX, equipmentStartY + SLOT_SPACING * 3, ArmorItem.Type.BOOTS));
 
-        // Armor slots (bottom to top for consistent indices)
-        this.addSlot(new ArmorSlot(companionInventory, CompanionEntity.BOOTS_SLOT, armorX, armorY + 54,
-            ArmorItem.Type.BOOTS));
-        this.addSlot(new ArmorSlot(companionInventory, CompanionEntity.LEGS_SLOT, armorX, armorY + 36,
-            ArmorItem.Type.LEGGINGS));
-        this.addSlot(new ArmorSlot(companionInventory, CompanionEntity.CHEST_SLOT, armorX, armorY + 18,
-            ArmorItem.Type.CHESTPLATE));
-        this.addSlot(new ArmorSlot(companionInventory, CompanionEntity.HELMET_SLOT, armorX, armorY,
-            ArmorItem.Type.HELMET));
+        int handsStartY = HAND_SLOT_START_Y;
+        this.addSlot(new Slot(companionInventory, CompanionEntity.MAIN_HAND_SLOT, equipmentColumnX, handsStartY));
+        this.addSlot(new Slot(companionInventory, CompanionEntity.OFF_HAND_SLOT,
+            equipmentColumnX, handsStartY + SLOT_SPACING));
 
-        // Player inventory (3x9)
-        int playerInvStartY = storageStartY + 72;
         for (int row = 0; row < 3; row++) {
             for (int col = 0; col < 9; col++) {
                 this.addSlot(new Slot(playerInventory, col + row * 9 + 9,
-                    storageStartX + col * 18, playerInvStartY + row * 18));
+                    STORAGE_START_X + col * SLOT_SPACING,
+                    PLAYER_INVENTORY_START_Y + row * SLOT_SPACING));
             }
         }
 
-        // Player hotbar
-        int hotbarY = playerInvStartY + 58;
         for (int col = 0; col < 9; col++) {
-            this.addSlot(new Slot(playerInventory, col, storageStartX + col * 18, hotbarY));
+            this.addSlot(new Slot(playerInventory, col,
+                STORAGE_START_X + col * SLOT_SPACING, HOTBAR_Y));
         }
     }
 

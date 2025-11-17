@@ -16,10 +16,10 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
         super(menu, playerInventory, title);
         this.imageWidth = 256;
         this.imageHeight = 256;
-        this.titleLabelX = 70;
-        this.titleLabelY = 20;
-        this.inventoryLabelX = 70;
-        this.inventoryLabelY = 132;
+        this.titleLabelX = CompanionMenu.STORAGE_START_X;
+        this.titleLabelY = 6;
+        this.inventoryLabelX = CompanionMenu.STORAGE_START_X;
+        this.inventoryLabelY = CompanionMenu.PLAYER_INVENTORY_START_Y - 12;
     }
 
     @Override
@@ -38,6 +38,7 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
         int x = (this.width - this.imageWidth) / 2;
         int y = (this.height - this.imageHeight) / 2;
         guiGraphics.blit(TEXTURE, x, y, 0, 0, this.imageWidth, this.imageHeight);
+        this.renderEquipmentSlotBackdrops(guiGraphics, x, y);
     }
 
     @Override
@@ -51,5 +52,24 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
         if (this.minecraft != null && this.minecraft.gameMode != null) {
             this.minecraft.gameMode.handleInventoryButtonClick(this.menu.containerId, 0);
         }
+    }
+
+    private void renderEquipmentSlotBackdrops(GuiGraphics guiGraphics, int originX, int originY) {
+        int columnX = originX + CompanionMenu.EQUIPMENT_COLUMN_X - 1;
+        int slotSize = CompanionMenu.SLOT_SPACING;
+        for (int i = 0; i < 4; i++) {
+            int slotY = originY + CompanionMenu.EQUIPMENT_START_Y - 1 + i * slotSize;
+            renderSlot(guiGraphics, columnX, slotY);
+        }
+
+        int mainHandY = originY + CompanionMenu.HAND_SLOT_START_Y - 1;
+        renderSlot(guiGraphics, columnX, mainHandY);
+        renderSlot(guiGraphics, columnX, mainHandY + slotSize);
+    }
+
+    private static void renderSlot(GuiGraphics guiGraphics, int slotX, int slotY) {
+        guiGraphics.fill(slotX, slotY, slotX + CompanionMenu.SLOT_SPACING, slotY + CompanionMenu.SLOT_SPACING, 0xFF2B2B2B);
+        guiGraphics.fill(slotX + 1, slotY + 1, slotX + CompanionMenu.SLOT_SPACING - 1,
+            slotY + CompanionMenu.SLOT_SPACING - 1, 0xFF8B8B8B);
     }
 }

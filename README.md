@@ -99,9 +99,10 @@ To test on a dedicated server:
 The entity skin and GUI background are embedded directly inside
 `src/main/java/com/yourname/companionmod/client/CompanionTextures.java` as Base64 strings.
 This keeps the repository free from binary files (per Codex restrictions) while still
-shipping the reference art extracted from the legacy mod. If you want to swap in new
-artwork, replace the Base64 strings in that class with the encoded contents of your
-preferred PNG files.
+shipping the reference art extracted from the legacy mod. The current companion skin
+is the `medieval-barmaid.png` variant from `entities/female`, and the inventory panel
+comes from `textures/inventory.png`. If you want to swap in new artwork, replace the
+Base64 strings in that class with the encoded contents of your preferred PNG files.
 
 ## Project Structure
 

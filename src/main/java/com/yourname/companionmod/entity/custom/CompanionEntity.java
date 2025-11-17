@@ -23,6 +23,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ArmorItem;
 import net.minecraft.world.item.AxeItem;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.ShieldItem;
 import net.minecraft.world.item.SwordItem;
 import net.minecraft.world.item.TieredItem;
 import net.minecraft.world.level.Level;
@@ -223,6 +224,7 @@ public class CompanionEntity extends PathfinderMob {
         }
         this.runWithInventorySilenced(() -> {
             this.equipBestWeapon(true);
+            this.equipShield(true);
             this.equipBestArmor(ArmorItem.Type.BOOTS, BOOTS_SLOT, true);
             this.equipBestArmor(ArmorItem.Type.LEGGINGS, LEGS_SLOT, true);
             this.equipBestArmor(ArmorItem.Type.CHESTPLATE, CHEST_SLOT, true);
@@ -234,6 +236,7 @@ public class CompanionEntity extends PathfinderMob {
 
     private void fillEmptyEquipmentSlots() {
         this.equipBestWeapon(false);
+        this.equipShield(false);
         this.equipBestArmor(ArmorItem.Type.BOOTS, BOOTS_SLOT, false);
         this.equipBestArmor(ArmorItem.Type.LEGGINGS, LEGS_SLOT, false);
         this.equipBestArmor(ArmorItem.Type.CHESTPLATE, CHEST_SLOT, false);
@@ -256,6 +259,19 @@ public class CompanionEntity extends PathfinderMob {
         }
         if (bestIndex >= 0 && bestScore > 0) {
             this.swapSlots(bestIndex, MAIN_HAND_SLOT);
+        }
+    }
+
+    private void equipShield(boolean allowReplacement) {
+        if (!allowReplacement && !this.inventory.getItem(OFF_HAND_SLOT).isEmpty()) {
+            return;
+        }
+        for (int i = 0; i < STORAGE_SIZE; i++) {
+            ItemStack candidate = this.inventory.getItem(i);
+            if (!candidate.isEmpty() && candidate.getItem() instanceof ShieldItem) {
+                this.swapSlots(i, OFF_HAND_SLOT);
+                break;
+            }
         }
     }
 
