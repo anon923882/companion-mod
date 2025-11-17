@@ -8,8 +8,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Inventory;
-import org.joml.Vector3f;
-import org.joml.Quaternionf;
 
 public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
     private static final ResourceLocation SURVIVAL_TEXTURE =
@@ -17,8 +15,8 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
 
     public CompanionScreen(CompanionMenu menu, Inventory playerInventory, Component title) {
         super(menu, playerInventory, title);
-        this.imageWidth = 176; // vanilla
-        this.imageHeight = 166; // vanilla minus hotbar
+        this.imageWidth = 176;
+        this.imageHeight = 166;
         this.titleLabelX = 8;
         this.titleLabelY = 6;
         this.inventoryLabelX = 8;
@@ -30,18 +28,14 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
         int x = this.leftPos;
         int y = this.topPos;
         guiGraphics.blit(SURVIVAL_TEXTURE, x, y, 0, 0, this.imageWidth, this.imageHeight);
-        // Fill crafting grid + result
         int bgColor = 0xFF373737;
         guiGraphics.fill(x + 98, y + 18, x + 98 + 55, y + 18 + 55, bgColor);
-        // Render entity
         LivingEntity companion = this.menu.getCompanion();
         if (companion != null) {
             InventoryScreen.renderEntityInInventoryFollowsMouse(
                 guiGraphics,
                 x + 51, y + 75, 30,
-                new Vector3f(0f, 0f, 0f),
-                new Quaternionf().rotationXYZ(0, 0, 0),
-                new Quaternionf().rotationY((float)Math.PI),
+                0, 0, 180f, 180f, 0f,
                 companion
             );
         }
