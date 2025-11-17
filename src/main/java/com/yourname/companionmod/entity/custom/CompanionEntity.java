@@ -1,6 +1,7 @@
 package com.yourname.companionmod.entity.custom;
 
 import com.yourname.companionmod.menu.CompanionMenu;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
@@ -44,6 +45,8 @@ public class CompanionEntity extends PathfinderMob {
     public static final int TOTAL_SLOTS = STORAGE_SIZE + 6;
     private static final float SELF_HEAL_THRESHOLD = 0.6f;
     private static final int SELF_HEAL_COOLDOWN_TICKS = 100;
+    private static final double TELEPORT_DISTANCE_SQR = 20 * 20;
+    private static final int TELEPORT_ATTEMPTS = 10;
 
     private final CompanionInventory inventory = new CompanionInventory(this);
     private int healCooldown = 0;
@@ -120,6 +123,7 @@ public class CompanionEntity extends PathfinderMob {
                 this.healCooldown--;
             }
             this.tryConsumeHeldFood();
+            this.tryTeleportToOwner();
         }
     }
 
@@ -372,6 +376,47 @@ public class CompanionEntity extends PathfinderMob {
         this.inventory.setItem(MAIN_HAND_SLOT, result);
         this.playSound(SoundEvents.GENERIC_EAT, 1.0F, 1.0F);
         this.healCooldown = SELF_HEAL_COOLDOWN_TICKS;
+    }
+
+    private void tryTeleportToOwner() {
+        Player owner = this.getOwner();
+        if (owner == null || owner.level() != this.level() || owner.isSpectator()) {
+            return;
+        }
+        if (this.distanceToSqr(owner) < TELEPORT_DISTANCE_SQR) {
+            return;
+        }
+
+        BlockPos ownerPos = owner.blockPosition();
+        for (int i = 0; i < TELEPORT_ATTEMPTS; i++) {
+            BlockPos target = ownerPos.offset(this.random.nextInt(5) - 2, this.random.nextInt(3) - 1,
+                this.random.nextInt(5) - 2);
+            if (this.canTeleportTo(target)) {
+                this.teleportTo(target.getX() + 0.5D, target.getY(), target.getZ() + 0.5D);
+                this.getNavigation().stop();
+                return;
+            }
+        }
+
+        this.teleportTo(owner.getX(), owner.getY(), owner.getZ());
+        this.getNavigation().stop();
+    }
+
+    private boolean canTeleportTo(BlockPos target) {
+        if (!this.level().isLoaded(target) || !this.level().getWorldBorder().isWithinBounds(target)) {
+            return false;
+        }
+        BlockPos below = target.below();
+        if (!this.level().getBlockState(below).isSolidRender(this.level(), below)) {
+            return false;
+        }
+        if (!this.level().isEmptyBlock(target) || !this.level().isEmptyBlock(target.above())) {
+            return false;
+        }
+        return this.level().noCollision(this, this.getBoundingBox().move(
+            target.getX() + 0.5D - this.getX(),
+            target.getY() - this.getY(),
+            target.getZ() + 0.5D - this.getZ()));
     }
 
     private static class CompanionInventory extends SimpleContainer {
