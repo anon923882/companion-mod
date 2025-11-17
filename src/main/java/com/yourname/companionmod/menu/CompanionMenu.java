@@ -20,11 +20,11 @@ public class CompanionMenu extends AbstractContainerMenu {
     public static final int STORAGE_ROWS = 3;
     public static final int STORAGE_START_X = 8;
     public static final int STORAGE_START_Y = 18;
-    public static final int PLAYER_INVENTORY_START_Y = 140;
-    public static final int HOTBAR_Y = 198;
+    public static final int PLAYER_INVENTORY_START_Y = 84;
+    public static final int HOTBAR_Y = 142;
     public static final int EQUIPMENT_COLUMN_X = STORAGE_START_X + SLOT_SPACING * STORAGE_COLUMNS + 12;
     public static final int EQUIPMENT_START_Y = STORAGE_START_Y;
-    public static final int HAND_SLOT_START_Y = EQUIPMENT_START_Y + SLOT_SPACING * 4 + 14;
+    public static final int HAND_SLOT_START_Y = EQUIPMENT_START_Y + SLOT_SPACING * 4 + 10;
 
     private final Container companionInventory;
     private final CompanionEntity companion;
