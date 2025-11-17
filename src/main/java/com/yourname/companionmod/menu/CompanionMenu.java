@@ -7,6 +7,8 @@ import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.inventory.ContainerData;
+import net.minecraft.world.inventory.SimpleContainerData;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ArmorItem;
 import net.minecraft.world.item.ItemStack;
@@ -15,62 +17,83 @@ import net.minecraft.world.item.SwordItem;
 import net.minecraft.world.item.TieredItem;
 
 public class CompanionMenu extends AbstractContainerMenu {
+    public static final int DATA_SIZE = 4;
     public static final int SLOT_SPACING = 18;
     public static final int STORAGE_COLUMNS = 9;
     public static final int STORAGE_ROWS = 3;
-    public static final int STORAGE_START_X = 8;
-    public static final int STORAGE_START_Y = 18;
-    public static final int PLAYER_INVENTORY_START_Y = 140;
-    public static final int HOTBAR_Y = 198;
-    public static final int EQUIPMENT_COLUMN_X = STORAGE_START_X + SLOT_SPACING * STORAGE_COLUMNS + 12;
-    public static final int EQUIPMENT_START_Y = STORAGE_START_Y;
-    public static final int HAND_SLOT_START_Y = EQUIPMENT_START_Y + SLOT_SPACING * 4 + 14;
+    public static final int EQUIPMENT_PANEL_WIDTH = SLOT_SPACING * 2 + 8;
+    public static final int STORAGE_START_X = EQUIPMENT_PANEL_WIDTH + 8;
+    public static final int COMPANION_STORAGE_START_Y = 18;
+    public static final int PLAYER_INVENTORY_START_Y = 84;
+    public static final int PLAYER_HOTBAR_Y = 142;
+    public static final int ARMOR_COLUMN_X = 8;
+    public static final int ARMOR_START_Y = 18;
+    public static final int MAIN_HAND_SLOT_X = ARMOR_COLUMN_X + SLOT_SPACING;
+    public static final int MAIN_HAND_SLOT_Y = ARMOR_START_Y;
+    public static final int OFF_HAND_SLOT_X = MAIN_HAND_SLOT_X;
+    public static final int OFF_HAND_SLOT_Y = ARMOR_START_Y + SLOT_SPACING;
+    public static final int BUTTON_TOGGLE_XP = 1;
+    public static final int BUTTON_TOGGLE_PASSIVE = 2;
+    public static final int BUTTON_TOGGLE_HOSTILE = 3;
+    public static final int BUTTON_TOGGLE_AUTO_EQUIP = 4;
+    private static final int FLAG_XP = 0x1;
+    private static final int FLAG_PASSIVE = 0x2;
+    private static final int FLAG_HOSTILE = 0x4;
+    private static final int FLAG_AUTO_EQUIP = 0x8;
 
     private final Container companionInventory;
     private final CompanionEntity companion;
+    private final ContainerData dataAccess;
 
     // Client constructor
     public CompanionMenu(int containerId, Inventory playerInventory) {
-        this(containerId, playerInventory, new SimpleContainer(CompanionEntity.TOTAL_SLOTS), null);
+        this(containerId, playerInventory, new SimpleContainer(CompanionEntity.TOTAL_SLOTS),
+            new SimpleContainerData(DATA_SIZE), null);
     }
 
     // Server constructor
     public CompanionMenu(int containerId, Inventory playerInventory, Container companionInventory,
             CompanionEntity companion) {
+        this(containerId, playerInventory, companionInventory,
+            companion != null ? new CompanionData(companion) : new SimpleContainerData(DATA_SIZE), companion);
+    }
+
+    private CompanionMenu(int containerId, Inventory playerInventory, Container companionInventory,
+            ContainerData dataAccess, CompanionEntity companion) {
         super(ModMenuTypes.COMPANION_MENU.get(), containerId);
         checkContainerSize(companionInventory, CompanionEntity.TOTAL_SLOTS);
         this.companionInventory = companionInventory;
         this.companion = companion;
+        this.dataAccess = dataAccess;
 
         companionInventory.startOpen(playerInventory.player);
+        this.addDataSlots(this.dataAccess);
 
-        // Companion storage inventory (27 slots only - 3 rows x 9 columns)
+        // Companion storage inventory (3 rows x 9 columns)
         for (int row = 0; row < STORAGE_ROWS; row++) {
             for (int col = 0; col < STORAGE_COLUMNS; col++) {
                 int index = col + row * STORAGE_COLUMNS;
                 this.addSlot(new Slot(companionInventory, index,
                     STORAGE_START_X + col * SLOT_SPACING,
-                    STORAGE_START_Y + row * SLOT_SPACING));
+                    COMPANION_STORAGE_START_Y + row * SLOT_SPACING));
             }
         }
 
         // Equipment slots (separate from storage grid)
-        int equipmentColumnX = EQUIPMENT_COLUMN_X;
-        int equipmentStartY = EQUIPMENT_START_Y;
         this.addSlot(new ArmorSlot(companionInventory, CompanionEntity.HELMET_SLOT,
-            equipmentColumnX, equipmentStartY, ArmorItem.Type.HELMET));
+            ARMOR_COLUMN_X, ARMOR_START_Y, ArmorItem.Type.HELMET));
         this.addSlot(new ArmorSlot(companionInventory, CompanionEntity.CHEST_SLOT,
-            equipmentColumnX, equipmentStartY + SLOT_SPACING, ArmorItem.Type.CHESTPLATE));
+            ARMOR_COLUMN_X, ARMOR_START_Y + SLOT_SPACING, ArmorItem.Type.CHESTPLATE));
         this.addSlot(new ArmorSlot(companionInventory, CompanionEntity.LEGS_SLOT,
-            equipmentColumnX, equipmentStartY + SLOT_SPACING * 2, ArmorItem.Type.LEGGINGS));
+            ARMOR_COLUMN_X, ARMOR_START_Y + SLOT_SPACING * 2, ArmorItem.Type.LEGGINGS));
         this.addSlot(new ArmorSlot(companionInventory, CompanionEntity.BOOTS_SLOT,
-            equipmentColumnX, equipmentStartY + SLOT_SPACING * 3, ArmorItem.Type.BOOTS));
+            ARMOR_COLUMN_X, ARMOR_START_Y + SLOT_SPACING * 3, ArmorItem.Type.BOOTS));
 
         // Hand slots
-        int handsStartY = HAND_SLOT_START_Y;
-        this.addSlot(new MainHandSlot(companionInventory, CompanionEntity.MAIN_HAND_SLOT, equipmentColumnX, handsStartY));
+        this.addSlot(new MainHandSlot(companionInventory, CompanionEntity.MAIN_HAND_SLOT,
+            MAIN_HAND_SLOT_X, MAIN_HAND_SLOT_Y));
         this.addSlot(new OffHandSlot(companionInventory, CompanionEntity.OFF_HAND_SLOT,
-            equipmentColumnX, handsStartY + SLOT_SPACING));
+            OFF_HAND_SLOT_X, OFF_HAND_SLOT_Y));
 
         // Player inventory (3 rows x 9 columns)
         for (int row = 0; row < 3; row++) {
@@ -84,7 +107,7 @@ public class CompanionMenu extends AbstractContainerMenu {
         // Player hotbar (9 columns)
         for (int col = 0; col < 9; col++) {
             this.addSlot(new Slot(playerInventory, col,
-                STORAGE_START_X + col * SLOT_SPACING, HOTBAR_Y));
+                STORAGE_START_X + col * SLOT_SPACING, PLAYER_HOTBAR_Y));
         }
     }
 
@@ -130,11 +153,60 @@ public class CompanionMenu extends AbstractContainerMenu {
 
     @Override
     public boolean clickMenuButton(Player player, int buttonId) {
-        if (buttonId == 0 && this.companion != null && this.companion.isOwnedBy(player)) {
-            this.companion.equipBestGear();
-            return true;
+        if (this.companion != null && this.companion.isOwnedBy(player)) {
+            return switch (buttonId) {
+                case BUTTON_TOGGLE_XP -> {
+                    this.companion.toggleExperiencePickup();
+                    yield true;
+                }
+                case BUTTON_TOGGLE_PASSIVE -> {
+                    this.companion.togglePassiveHunting();
+                    yield true;
+                }
+                case BUTTON_TOGGLE_HOSTILE -> {
+                    this.companion.toggleHostileHunting();
+                    yield true;
+                }
+                case BUTTON_TOGGLE_AUTO_EQUIP -> {
+                    this.companion.toggleAutoEquip();
+                    yield true;
+                }
+                default -> super.clickMenuButton(player, buttonId);
+            };
         }
         return super.clickMenuButton(player, buttonId);
+    }
+
+    public int getDisplayedLevel() {
+        return this.dataAccess.get(0);
+    }
+
+    public int getDisplayedExperience() {
+        return this.dataAccess.get(1);
+    }
+
+    public int getDisplayedExperienceToNext() {
+        return this.dataAccess.get(2);
+    }
+
+    private int getBehaviorFlags() {
+        return this.dataAccess.get(3);
+    }
+
+    public boolean isExperiencePickupEnabled() {
+        return (this.getBehaviorFlags() & FLAG_XP) != 0;
+    }
+
+    public boolean isPassiveHuntEnabled() {
+        return (this.getBehaviorFlags() & FLAG_PASSIVE) != 0;
+    }
+
+    public boolean isHostileHuntEnabled() {
+        return (this.getBehaviorFlags() & FLAG_HOSTILE) != 0;
+    }
+
+    public boolean isAutoEquipEnabled() {
+        return (this.getBehaviorFlags() & FLAG_AUTO_EQUIP) != 0;
     }
 
     private boolean movePlayerItemToCompanion(ItemStack stack) {
@@ -218,6 +290,52 @@ public class CompanionMenu extends AbstractContainerMenu {
         @Override
         public int getMaxStackSize() {
             return 1;
+        }
+    }
+
+    private static class CompanionData implements ContainerData {
+        private final CompanionEntity companion;
+
+        public CompanionData(CompanionEntity companion) {
+            this.companion = companion;
+        }
+
+        @Override
+        public int get(int index) {
+            return switch (index) {
+                case 0 -> this.companion.getCompanionLevel();
+                case 1 -> this.companion.getExperience();
+                case 2 -> this.companion.getExperienceToNextLevel();
+                case 3 -> this.encodeFlags();
+                default -> 0;
+            };
+        }
+
+        private int encodeFlags() {
+            int flags = 0;
+            if (this.companion.isExperiencePickupEnabled()) {
+                flags |= CompanionMenu.FLAG_XP;
+            }
+            if (this.companion.isPassiveHuntEnabled()) {
+                flags |= CompanionMenu.FLAG_PASSIVE;
+            }
+            if (this.companion.isHostileHuntEnabled()) {
+                flags |= CompanionMenu.FLAG_HOSTILE;
+            }
+            if (this.companion.isAutoEquipEnabled()) {
+                flags |= CompanionMenu.FLAG_AUTO_EQUIP;
+            }
+            return flags;
+        }
+
+        @Override
+        public void set(int index, int value) {
+            // Client-only
+        }
+
+        @Override
+        public int getCount() {
+            return DATA_SIZE;
         }
     }
 }
