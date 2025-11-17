@@ -156,7 +156,6 @@ public class CompanionEntity extends PathfinderMob {
         }
     }
 
-    // Custom follow goal
     private static class FollowOwnerGoal extends Goal {
         private final CompanionEntity companion;
         private Player owner;
@@ -247,11 +246,16 @@ public class CompanionEntity extends PathfinderMob {
     }
 
     private void equipBestWeapon(boolean allowReplacement) {
-        if (!allowReplacement && !this.inventory.getItem(MAIN_HAND_SLOT).isEmpty()) {
+        ItemStack currentWeapon = this.inventory.getItem(MAIN_HAND_SLOT);
+        double currentScore = getWeaponScore(currentWeapon);
+        
+        if (!allowReplacement && !currentWeapon.isEmpty()) {
             return;
         }
+        
         int bestIndex = -1;
-        double bestScore = 0;
+        double bestScore = currentScore;
+        
         for (int i = 0; i < STORAGE_SIZE; i++) {
             ItemStack candidate = this.inventory.getItem(i);
             double score = getWeaponScore(candidate);
@@ -260,7 +264,8 @@ public class CompanionEntity extends PathfinderMob {
                 bestIndex = i;
             }
         }
-        if (bestIndex >= 0 && bestScore > 0) {
+        
+        if (bestIndex >= 0 && bestScore > currentScore) {
             this.swapSlots(bestIndex, MAIN_HAND_SLOT);
         }
     }
@@ -279,11 +284,16 @@ public class CompanionEntity extends PathfinderMob {
     }
 
     private void equipBestArmor(ArmorItem.Type armorType, int equipmentSlotIndex, boolean allowReplacement) {
-        if (!allowReplacement && !this.inventory.getItem(equipmentSlotIndex).isEmpty()) {
+        ItemStack currentArmor = this.inventory.getItem(equipmentSlotIndex);
+        double currentScore = getArmorScore(currentArmor, armorType);
+        
+        if (!allowReplacement && !currentArmor.isEmpty()) {
             return;
         }
+        
         int bestIndex = -1;
-        double bestScore = 0;
+        double bestScore = currentScore;
+        
         for (int i = 0; i < STORAGE_SIZE; i++) {
             ItemStack candidate = this.inventory.getItem(i);
             double score = getArmorScore(candidate, armorType);
@@ -292,7 +302,8 @@ public class CompanionEntity extends PathfinderMob {
                 bestIndex = i;
             }
         }
-        if (bestIndex >= 0 && bestScore > 0) {
+        
+        if (bestIndex >= 0 && bestScore > currentScore) {
             this.swapSlots(bestIndex, equipmentSlotIndex);
         }
     }

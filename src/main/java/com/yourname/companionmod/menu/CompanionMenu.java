@@ -44,6 +44,7 @@ public class CompanionMenu extends AbstractContainerMenu {
 
         companionInventory.startOpen(playerInventory.player);
 
+        // Companion storage inventory (27 slots only - 3 rows x 9 columns)
         for (int row = 0; row < STORAGE_ROWS; row++) {
             for (int col = 0; col < STORAGE_COLUMNS; col++) {
                 int index = col + row * STORAGE_COLUMNS;
@@ -53,6 +54,7 @@ public class CompanionMenu extends AbstractContainerMenu {
             }
         }
 
+        // Equipment slots (separate from storage grid)
         int equipmentColumnX = EQUIPMENT_COLUMN_X;
         int equipmentStartY = EQUIPMENT_START_Y;
         this.addSlot(new ArmorSlot(companionInventory, CompanionEntity.HELMET_SLOT,
@@ -64,11 +66,13 @@ public class CompanionMenu extends AbstractContainerMenu {
         this.addSlot(new ArmorSlot(companionInventory, CompanionEntity.BOOTS_SLOT,
             equipmentColumnX, equipmentStartY + SLOT_SPACING * 3, ArmorItem.Type.BOOTS));
 
+        // Hand slots
         int handsStartY = HAND_SLOT_START_Y;
         this.addSlot(new MainHandSlot(companionInventory, CompanionEntity.MAIN_HAND_SLOT, equipmentColumnX, handsStartY));
         this.addSlot(new OffHandSlot(companionInventory, CompanionEntity.OFF_HAND_SLOT,
             equipmentColumnX, handsStartY + SLOT_SPACING));
 
+        // Player inventory (3 rows x 9 columns)
         for (int row = 0; row < 3; row++) {
             for (int col = 0; col < 9; col++) {
                 this.addSlot(new Slot(playerInventory, col + row * 9 + 9,
@@ -77,6 +81,7 @@ public class CompanionMenu extends AbstractContainerMenu {
             }
         }
 
+        // Player hotbar (9 columns)
         for (int col = 0; col < 9; col++) {
             this.addSlot(new Slot(playerInventory, col,
                 STORAGE_START_X + col * SLOT_SPACING, HOTBAR_Y));
