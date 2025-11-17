@@ -7,6 +7,8 @@ import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.inventory.ContainerData;
+import net.minecraft.world.inventory.SimpleContainerData;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ArmorItem;
 import net.minecraft.world.item.ItemStack;
@@ -15,6 +17,7 @@ import net.minecraft.world.item.SwordItem;
 import net.minecraft.world.item.TieredItem;
 
 public class CompanionMenu extends AbstractContainerMenu {
+    public static final int DATA_SIZE = 4;
     public static final int SLOT_SPACING = 18;
     public static final int STORAGE_COLUMNS = 9;
     public static final int STORAGE_ROWS = 3;
@@ -25,24 +28,42 @@ public class CompanionMenu extends AbstractContainerMenu {
     public static final int EQUIPMENT_COLUMN_X = STORAGE_START_X + SLOT_SPACING * STORAGE_COLUMNS + 12;
     public static final int EQUIPMENT_START_Y = STORAGE_START_Y;
     public static final int HAND_SLOT_START_Y = EQUIPMENT_START_Y + SLOT_SPACING * 4 + 10;
+    public static final int BUTTON_TOGGLE_XP = 1;
+    public static final int BUTTON_TOGGLE_PASSIVE = 2;
+    public static final int BUTTON_TOGGLE_HOSTILE = 3;
+    public static final int BUTTON_TOGGLE_AUTO_EQUIP = 4;
+    private static final int FLAG_XP = 0x1;
+    private static final int FLAG_PASSIVE = 0x2;
+    private static final int FLAG_HOSTILE = 0x4;
+    private static final int FLAG_AUTO_EQUIP = 0x8;
 
     private final Container companionInventory;
     private final CompanionEntity companion;
+    private final ContainerData dataAccess;
 
     // Client constructor
     public CompanionMenu(int containerId, Inventory playerInventory) {
-        this(containerId, playerInventory, new SimpleContainer(CompanionEntity.TOTAL_SLOTS), null);
+        this(containerId, playerInventory, new SimpleContainer(CompanionEntity.TOTAL_SLOTS),
+            new SimpleContainerData(DATA_SIZE), null);
     }
 
     // Server constructor
     public CompanionMenu(int containerId, Inventory playerInventory, Container companionInventory,
             CompanionEntity companion) {
+        this(containerId, playerInventory, companionInventory,
+            companion != null ? new CompanionData(companion) : new SimpleContainerData(DATA_SIZE), companion);
+    }
+
+    private CompanionMenu(int containerId, Inventory playerInventory, Container companionInventory,
+            ContainerData dataAccess, CompanionEntity companion) {
         super(ModMenuTypes.COMPANION_MENU.get(), containerId);
         checkContainerSize(companionInventory, CompanionEntity.TOTAL_SLOTS);
         this.companionInventory = companionInventory;
         this.companion = companion;
+        this.dataAccess = dataAccess;
 
         companionInventory.startOpen(playerInventory.player);
+        this.addDataSlots(this.dataAccess);
 
         // Companion storage inventory (27 slots only - 3 rows x 9 columns)
         for (int row = 0; row < STORAGE_ROWS; row++) {
@@ -130,11 +151,60 @@ public class CompanionMenu extends AbstractContainerMenu {
 
     @Override
     public boolean clickMenuButton(Player player, int buttonId) {
-        if (buttonId == 0 && this.companion != null && this.companion.isOwnedBy(player)) {
-            this.companion.equipBestGear();
-            return true;
+        if (this.companion != null && this.companion.isOwnedBy(player)) {
+            return switch (buttonId) {
+                case BUTTON_TOGGLE_XP -> {
+                    this.companion.toggleExperiencePickup();
+                    yield true;
+                }
+                case BUTTON_TOGGLE_PASSIVE -> {
+                    this.companion.togglePassiveHunting();
+                    yield true;
+                }
+                case BUTTON_TOGGLE_HOSTILE -> {
+                    this.companion.toggleHostileHunting();
+                    yield true;
+                }
+                case BUTTON_TOGGLE_AUTO_EQUIP -> {
+                    this.companion.toggleAutoEquip();
+                    yield true;
+                }
+                default -> super.clickMenuButton(player, buttonId);
+            };
         }
         return super.clickMenuButton(player, buttonId);
+    }
+
+    public int getDisplayedLevel() {
+        return this.dataAccess.get(0);
+    }
+
+    public int getDisplayedExperience() {
+        return this.dataAccess.get(1);
+    }
+
+    public int getDisplayedExperienceToNext() {
+        return this.dataAccess.get(2);
+    }
+
+    private int getBehaviorFlags() {
+        return this.dataAccess.get(3);
+    }
+
+    public boolean isExperiencePickupEnabled() {
+        return (this.getBehaviorFlags() & FLAG_XP) != 0;
+    }
+
+    public boolean isPassiveHuntEnabled() {
+        return (this.getBehaviorFlags() & FLAG_PASSIVE) != 0;
+    }
+
+    public boolean isHostileHuntEnabled() {
+        return (this.getBehaviorFlags() & FLAG_HOSTILE) != 0;
+    }
+
+    public boolean isAutoEquipEnabled() {
+        return (this.getBehaviorFlags() & FLAG_AUTO_EQUIP) != 0;
     }
 
     private boolean movePlayerItemToCompanion(ItemStack stack) {
@@ -218,6 +288,52 @@ public class CompanionMenu extends AbstractContainerMenu {
         @Override
         public int getMaxStackSize() {
             return 1;
+        }
+    }
+
+    private static class CompanionData implements ContainerData {
+        private final CompanionEntity companion;
+
+        public CompanionData(CompanionEntity companion) {
+            this.companion = companion;
+        }
+
+        @Override
+        public int get(int index) {
+            return switch (index) {
+                case 0 -> this.companion.getCompanionLevel();
+                case 1 -> this.companion.getExperience();
+                case 2 -> this.companion.getExperienceToNextLevel();
+                case 3 -> this.encodeFlags();
+                default -> 0;
+            };
+        }
+
+        private int encodeFlags() {
+            int flags = 0;
+            if (this.companion.isExperiencePickupEnabled()) {
+                flags |= CompanionMenu.FLAG_XP;
+            }
+            if (this.companion.isPassiveHuntEnabled()) {
+                flags |= CompanionMenu.FLAG_PASSIVE;
+            }
+            if (this.companion.isHostileHuntEnabled()) {
+                flags |= CompanionMenu.FLAG_HOSTILE;
+            }
+            if (this.companion.isAutoEquipEnabled()) {
+                flags |= CompanionMenu.FLAG_AUTO_EQUIP;
+            }
+            return flags;
+        }
+
+        @Override
+        public void set(int index, int value) {
+            // Client-only
+        }
+
+        @Override
+        public int getCount() {
+            return DATA_SIZE;
         }
     }
 }
