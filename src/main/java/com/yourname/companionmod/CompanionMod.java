@@ -1,5 +1,6 @@
 package com.yourname.companionmod;
 
+import com.yourname.companionmod.client.CompanionTextures;
 import com.yourname.companionmod.entity.ModEntities;
 import com.yourname.companionmod.entity.client.CompanionRenderer;
 import com.yourname.companionmod.menu.ModMenuTypes;
@@ -10,6 +11,7 @@ import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
+import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
 import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.neoforged.neoforge.event.entity.EntityAttributeCreationEvent;
 
@@ -27,6 +29,7 @@ public class CompanionMod {
         if (dist.isClient()) {
             modEventBus.addListener(this::registerRenderers);
             modEventBus.addListener(this::registerScreens);
+            modEventBus.addListener(this::onClientSetup);
         }
     }
 
@@ -40,6 +43,10 @@ public class CompanionMod {
 
     private void registerScreens(RegisterMenuScreensEvent event) {
         event.register(ModMenuTypes.COMPANION_MENU.get(), CompanionScreen::new);
+    }
+
+    private void onClientSetup(FMLClientSetupEvent event) {
+        event.enqueueWork(CompanionTextures::bootstrap);
     }
 
     private void onEntityAttributeCreate(EntityAttributeCreationEvent event) {

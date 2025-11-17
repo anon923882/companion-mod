@@ -1,0 +1,47 @@
+package com.yourname.companionmod.client;
+
+import com.mojang.blaze3d.platform.NativeImage;
+import com.yourname.companionmod.CompanionMod;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.texture.DynamicTexture;
+import net.minecraft.resources.ResourceLocation;
+
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.util.Base64;
+
+public final class CompanionTextures {
+    public static final ResourceLocation ENTITY =
+        ResourceLocation.fromNamespaceAndPath(CompanionMod.MOD_ID, "dynamic/entity/companion");
+    public static final ResourceLocation GUI =
+        ResourceLocation.fromNamespaceAndPath(CompanionMod.MOD_ID, "dynamic/gui/companion_inventory");
+
+    private CompanionTextures() {}
+
+    public static void bootstrap() {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft == null) {
+            return;
+        }
+
+        register(minecraft, ENTITY, ENTITY_PNG_BASE64);
+        register(minecraft, GUI, GUI_PNG_BASE64);
+    }
+
+    private static void register(Minecraft minecraft, ResourceLocation resourceLocation, String base64Data) {
+        var textureManager = minecraft.getTextureManager();
+        textureManager.register(resourceLocation, new DynamicTexture(read(base64Data)));
+    }
+
+    private static NativeImage read(String base64Data) {
+        byte[] raw = Base64.getDecoder().decode(base64Data);
+        try (ByteArrayInputStream inputStream = new ByteArrayInputStream(raw)) {
+            return NativeImage.read(NativeImage.Format.RGBA, inputStream);
+        } catch (IOException exception) {
+            throw new IllegalStateException("Unable to decode embedded texture", exception);
+        }
+    }
+
+    private static final String ENTITY_PNG_BASE64 = "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";
+    private static final String GUI_PNG_BASE64 = "iVBORw0KGgoAAAANSUhEUgAAAQAAAAEACAMAAABrrFhUAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAVUExURQAAAP///8bGxlVVVTc3N4uLiwAAAGWzlxsAAAAHdFJOU////////wAaSwNGAAAACXBIWXMAAA7DAAAOwwHHb6hkAAADfElEQVR4Xu2ZwWolMQwEJ3mb+f9P3rXSGy9zEO4gscGuuggaHdzFmAd+131fu3KvcN3X264sGbj27f/2vmIgBLzvyeu1YGAI0P52IAABCFDLBAQgAAEI0P52IAABCFDLBARIwK8nH5qT/5xEJwtPwMeDt5+WRCcLBCAAAWqZgAAEIAABY7nv4FVJdLJAAAIQoJYJCEAAAhAwlj8+/1L/h5+WRCcL7wt40vi2ozlZSqKTBVcAAQhQywQEIAABCBjLfQevSqKTBQIQgAC1TEAAAhCAgLHcd/CqJDpZWAL6XnKqkuhk4X0BTxrfdjQnS0l0suAKIAABapmAAAQgAAFjue/gVUl0skAAAhCglgkIQAACEDCW+w5elUQnC0tA30tOVRKdLLwv4Enj247mZCmJThZcAQQgQC0TEIAABCBgLPcdvCqJThYIQAAC1DIBAQhAAALGct/Bq5LoZGEJ6HvJqUqik4X3BTxpfNvRnCwl0cmCK4AABKhlAgIQgAAEjOW+g1cl0ckCAQhAgFomIAABCEDAWO47eFUSnSwsAX0vOVVJdLLwvoAnjW87mpOlJDpZcAUQgAC1TEAAAhCAgLHcd/CqJDpZIAABCFDLBAQgAAEIGMt9B69KopOFJaDvJacqiU4WloAdQQACEKCWCQhAAAIQoP3tQAACEKCWCQhAwKcA/Qs/afynX3OylEQnC0+A3h2+aHza+F4SnSwQgAAEqGUCAhCAAASM5b6DVyXRyQIBCECAWiYgAAEIQMBY7vtfvyqJThbeF/Ck8W1Hc7KURCcLrgACEKCWCQhAAAIQMJb7Dl6VRCcLBCAAAWqZgAAEIAABY7nv4FVJdLKwBPS95FQl0cnC+wKeNL7taE6WkuhkwRVAAALUMgEBCEAAAsZy38GrkuhkgQAEIEAtExCAAAQgYCz3HbwqiU4WloC+l5yqJDpZWAJ2BAEIQIBaJvwVoLfXSeP7ruZkKYlOFp4A/dp80fiD9r0kOlkgAAEIUMsEBCAAAQgYy30Hr0qikwUCEIAAtUxAAAIQgICx3PeaW5VEJwtLwI4gAAFnC3itCbivsbkpSwLuS9v7sdB/CPhzDTbls2LO0tLOIEDzWBCgeSwI0DwWBGgeCwI0jwUBmseCAM1jQYDmsSBA81gQoHksCNA8FgRoHgsCNI8FAZrHggDNY0GA5rEcLuC+fwOsjhNXXNAehgAAAABJRU5ErkJggg==";
+}

@@ -1,29 +1,54 @@
 package com.yourname.companionmod.entity.custom;
 
+import com.google.common.collect.Multimap;
 import com.yourname.companionmod.menu.CompanionMenu;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.Container;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.SimpleContainer;
+import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.PathfinderMob;
-import net.minecraft.world.entity.ai.goal.*;
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.level.Level;
+import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.ai.goal.*;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ArmorItem;
+import net.minecraft.world.item.AxeItem;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.SwordItem;
+import net.minecraft.world.item.TieredItem;
+import net.minecraft.world.item.enchantment.Enchantments;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.gameevent.GameEvent;
 import java.util.UUID;
 
 public class CompanionEntity extends PathfinderMob {
     private static final EntityDataAccessor<String> OWNER_UUID = 
         SynchedEntityData.defineId(CompanionEntity.class, EntityDataSerializers.STRING);
     
-    private final SimpleContainer inventory = new SimpleContainer(27);
+    public static final int STORAGE_SIZE = 27;
+    public static final int MAIN_HAND_SLOT = STORAGE_SIZE;
+    public static final int OFF_HAND_SLOT = STORAGE_SIZE + 1;
+    public static final int BOOTS_SLOT = STORAGE_SIZE + 2;
+    public static final int LEGS_SLOT = STORAGE_SIZE + 3;
+    public static final int CHEST_SLOT = STORAGE_SIZE + 4;
+    public static final int HELMET_SLOT = STORAGE_SIZE + 5;
+    public static final int TOTAL_SLOTS = STORAGE_SIZE + 6;
+    private static final float SELF_HEAL_THRESHOLD = 0.6f;
+    private static final int SELF_HEAL_COOLDOWN_TICKS = 100;
+
+    private final CompanionInventory inventory = new CompanionInventory(this);
+    private int healCooldown = 0;
+    private boolean suppressInventoryUpdates = false;
 
     public CompanionEntity(EntityType<? extends PathfinderMob> entityType, Level level) {
         super(entityType, level);
@@ -89,6 +114,17 @@ public class CompanionEntity extends PathfinderMob {
     }
 
     @Override
+    public void tick() {
+        super.tick();
+        if (!this.level().isClientSide) {
+            if (this.healCooldown > 0) {
+                this.healCooldown--;
+            }
+            this.tryConsumeHeldFood();
+        }
+    }
+
+    @Override
     public void addAdditionalSaveData(CompoundTag tag) {
         super.addAdditionalSaveData(tag);
         if (this.getOwnerUUID() != null) {
@@ -105,6 +141,20 @@ public class CompanionEntity extends PathfinderMob {
         }
         if (tag.contains("Inventory")) {
             this.inventory.fromTag(tag.getList("Inventory", 10), this.registryAccess());
+            this.onInventoryChanged();
+        }
+    }
+
+    @Override
+    protected void dropCustomDeathLoot(net.minecraft.world.damagesource.DamageSource source, boolean recentlyHit) {
+        super.dropCustomDeathLoot(source, recentlyHit);
+        if (!this.level().isClientSide) {
+            for (int i = 0; i < this.inventory.getContainerSize(); i++) {
+                ItemStack stack = this.inventory.removeItemNoUpdate(i);
+                if (!stack.isEmpty()) {
+                    this.spawnAtLocation(stack);
+                }
+            }
         }
     }
 
@@ -160,6 +210,176 @@ public class CompanionEntity extends PathfinderMob {
         }
     }
 
+    private void onInventoryChanged() {
+        if (this.level().isClientSide || this.suppressInventoryUpdates) {
+            return;
+        }
+        this.suppressInventoryUpdates = true;
+        this.syncEquipmentFromInventory();
+        this.fillEmptyEquipmentSlots();
+        this.suppressInventoryUpdates = false;
+    }
+
+    public void equipBestGear() {
+        if (this.level().isClientSide) {
+            return;
+        }
+        this.runWithInventorySilenced(() -> {
+            this.equipBestWeapon(true);
+            this.equipBestArmor(ArmorItem.Type.BOOTS, BOOTS_SLOT, true);
+            this.equipBestArmor(ArmorItem.Type.LEGGINGS, LEGS_SLOT, true);
+            this.equipBestArmor(ArmorItem.Type.CHESTPLATE, CHEST_SLOT, true);
+            this.equipBestArmor(ArmorItem.Type.HELMET, HELMET_SLOT, true);
+            this.syncEquipmentFromInventory();
+        });
+        this.onInventoryChanged();
+    }
+
+    private void fillEmptyEquipmentSlots() {
+        this.equipBestWeapon(false);
+        this.equipBestArmor(ArmorItem.Type.BOOTS, BOOTS_SLOT, false);
+        this.equipBestArmor(ArmorItem.Type.LEGGINGS, LEGS_SLOT, false);
+        this.equipBestArmor(ArmorItem.Type.CHESTPLATE, CHEST_SLOT, false);
+        this.equipBestArmor(ArmorItem.Type.HELMET, HELMET_SLOT, false);
+    }
+
+    private void equipBestWeapon(boolean allowReplacement) {
+        if (!allowReplacement && !this.inventory.getItem(MAIN_HAND_SLOT).isEmpty()) {
+            return;
+        }
+        int bestIndex = -1;
+        double bestScore = 0;
+        for (int i = 0; i < STORAGE_SIZE; i++) {
+            ItemStack candidate = this.inventory.getItem(i);
+            double score = getWeaponScore(candidate);
+            if (score > bestScore) {
+                bestScore = score;
+                bestIndex = i;
+            }
+        }
+        if (bestIndex >= 0 && bestScore > 0) {
+            this.swapSlots(bestIndex, MAIN_HAND_SLOT);
+        }
+    }
+
+    private void equipBestArmor(ArmorItem.Type armorType, int equipmentSlotIndex, boolean allowReplacement) {
+        if (!allowReplacement && !this.inventory.getItem(equipmentSlotIndex).isEmpty()) {
+            return;
+        }
+        int bestIndex = -1;
+        double bestScore = 0;
+        for (int i = 0; i < STORAGE_SIZE; i++) {
+            ItemStack candidate = this.inventory.getItem(i);
+            double score = getArmorScore(candidate, armorType);
+            if (score > bestScore) {
+                bestScore = score;
+                bestIndex = i;
+            }
+        }
+        if (bestIndex >= 0 && bestScore > 0) {
+            this.swapSlots(bestIndex, equipmentSlotIndex);
+        }
+    }
+
+    private void swapSlots(int from, int to) {
+        ItemStack fromStack = this.inventory.getItem(from);
+        ItemStack toStack = this.inventory.getItem(to);
+        this.inventory.setItem(to, fromStack);
+        this.inventory.setItem(from, toStack);
+    }
+
+    private static double getWeaponScore(ItemStack stack) {
+        if (stack.isEmpty()) {
+            return 0;
+        }
+        double attack = 0;
+        Multimap<net.minecraft.world.entity.ai.attributes.Attribute, AttributeModifier> modifiers =
+            stack.getAttributeModifiers(EquipmentSlot.MAINHAND);
+        if (modifiers.containsKey(Attributes.ATTACK_DAMAGE)) {
+            for (AttributeModifier modifier : modifiers.get(Attributes.ATTACK_DAMAGE)) {
+                attack += modifier.amount();
+            }
+        }
+        if (attack == 0 && !(stack.getItem() instanceof SwordItem) && !(stack.getItem() instanceof AxeItem)
+                && !(stack.getItem() instanceof TieredItem)) {
+            return 0;
+        }
+        attack += stack.getEnchantmentLevel(Enchantments.SHARPNESS);
+        return attack;
+    }
+
+    private static double getArmorScore(ItemStack stack, ArmorItem.Type armorType) {
+        if (stack.isEmpty() || !(stack.getItem() instanceof ArmorItem armor) || armor.getType() != armorType) {
+            return 0;
+        }
+        double score = armor.getDefense() * 10.0 + armor.getToughness();
+        score += stack.getEnchantmentLevel(Enchantments.ALL_DAMAGE_PROTECTION) * 1.5;
+        return score;
+    }
+
+    private void syncEquipmentFromInventory() {
+        this.setItemSlot(EquipmentSlot.MAINHAND, this.inventory.getItem(MAIN_HAND_SLOT));
+        this.setItemSlot(EquipmentSlot.OFFHAND, this.inventory.getItem(OFF_HAND_SLOT));
+        this.setItemSlot(EquipmentSlot.FEET, this.inventory.getItem(BOOTS_SLOT));
+        this.setItemSlot(EquipmentSlot.LEGS, this.inventory.getItem(LEGS_SLOT));
+        this.setItemSlot(EquipmentSlot.CHEST, this.inventory.getItem(CHEST_SLOT));
+        this.setItemSlot(EquipmentSlot.HEAD, this.inventory.getItem(HELMET_SLOT));
+    }
+
+    private void runWithInventorySilenced(Runnable action) {
+        boolean previous = this.suppressInventoryUpdates;
+        this.suppressInventoryUpdates = true;
+        try {
+            action.run();
+        } finally {
+            this.suppressInventoryUpdates = previous;
+        }
+    }
+
+    private void tryConsumeHeldFood() {
+        if (this.healCooldown > 0) {
+            return;
+        }
+        if (this.getHealth() / this.getMaxHealth() > SELF_HEAL_THRESHOLD) {
+            return;
+        }
+        ItemStack held = this.inventory.getItem(MAIN_HAND_SLOT);
+        if (held.isEmpty() || !held.isEdible()) {
+            return;
+        }
+        this.level().gameEvent(this, GameEvent.EAT, this.position());
+        ItemStack result = held.getItem().finishUsingItem(held, this.level(), this);
+        this.inventory.setItem(MAIN_HAND_SLOT, result);
+        this.playSound(SoundEvents.GENERIC_EAT, 1.0F, 1.0F);
+        this.healCooldown = SELF_HEAL_COOLDOWN_TICKS;
+    }
+
+    private static class CompanionInventory extends SimpleContainer {
+        private final CompanionEntity companion;
+
+        public CompanionInventory(CompanionEntity companion) {
+            super(TOTAL_SLOTS);
+            this.companion = companion;
+        }
+
+        @Override
+        public void setChanged() {
+            super.setChanged();
+            this.companion.onInventoryChanged();
+        }
+
+        @Override
+        public boolean stillValid(Player player) {
+            if (!this.companion.isAlive()) {
+                return false;
+            }
+            if (!this.companion.isOwnedBy(player) && !player.isCreative()) {
+                return false;
+            }
+            return player.distanceToSqr(this.companion) <= 64.0D;
+        }
+    }
+
     private static class CompanionMenuProvider implements net.minecraft.world.MenuProvider {
         private final CompanionEntity companion;
 
@@ -168,14 +388,14 @@ public class CompanionEntity extends PathfinderMob {
         }
 
         @Override
-        public net.minecraft.network.chat.Component getDisplayName() {
-            return net.minecraft.network.chat.Component.literal("Companion Inventory");
+        public Component getDisplayName() {
+            return Component.translatable("container.companionmod.companion_inventory");
         }
 
         @Override
-        public net.minecraft.world.inventory.AbstractContainerMenu createMenu(int containerId, 
+        public net.minecraft.world.inventory.AbstractContainerMenu createMenu(int containerId,
                 net.minecraft.world.entity.player.Inventory playerInventory, Player player) {
-            return new CompanionMenu(containerId, playerInventory, companion.getInventory());
+            return new CompanionMenu(containerId, playerInventory, companion.getInventory(), this.companion);
         }
     }
 }
