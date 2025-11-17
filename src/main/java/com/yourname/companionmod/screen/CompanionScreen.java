@@ -1,6 +1,5 @@
 package com.yourname.companionmod.screen;
 
-import com.yourname.companionmod.entity.custom.CompanionEntity;
 import com.yourname.companionmod.menu.CompanionMenu;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
@@ -18,8 +17,8 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
 
     public CompanionScreen(CompanionMenu menu, Inventory playerInventory, Component title) {
         super(menu, playerInventory, title);
-        this.imageWidth = 176; // Vanilla survival inventory width
-        this.imageHeight = 166; // Vanilla minus hotbar
+        this.imageWidth = 176; // vanilla
+        this.imageHeight = 166; // vanilla minus hotbar
         this.titleLabelX = 8;
         this.titleLabelY = 6;
         this.inventoryLabelX = 8;
@@ -30,20 +29,17 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
     protected void renderBg(GuiGraphics guiGraphics, float partialTick, int mouseX, int mouseY) {
         int x = this.leftPos;
         int y = this.topPos;
-        // Draw vanilla survival inventory background
         guiGraphics.blit(SURVIVAL_TEXTURE, x, y, 0, 0, this.imageWidth, this.imageHeight);
-
-        // Fill the crafting grid + result slot area with inventory background
-        int bgColor = 0xFF373737; // Sampled from vanilla background
+        // Fill crafting grid + result
+        int bgColor = 0xFF373737;
         guiGraphics.fill(x + 98, y + 18, x + 98 + 55, y + 18 + 55, bgColor);
-
-        // Render the companion entity (in the spot the player would normally be)
-        if (this.menu.getCompanion() != null) {
-            LivingEntity companion = this.menu.getCompanion();
-            InventoryScreen.renderEntityInInventory(
+        // Render entity
+        LivingEntity companion = this.menu.getCompanion();
+        if (companion != null) {
+            InventoryScreen.renderEntityInInventoryFollowsMouse(
                 guiGraphics,
                 (float)(x + 51), (float)(y + 75), 30f,
-                new Vector3f(0f, 0f, 0f),
+                Vector3f.ZERO,
                 new Quaternionf().rotationXYZ(0, 0, 0),
                 new Quaternionf().rotationY((float)Math.PI),
                 companion
