@@ -49,6 +49,8 @@ sourceSets.main.resources { srcDir 'src/generated/resources' }
 
 dependencies {
     // NeoForge dependency is added automatically by the plugin
+    compileOnly "org.spongepowered:mixin:0.8.5"
+    annotationProcessor "org.spongepowered:mixin:0.8.5:processor"
 }
 
 tasks.withType(JavaCompile).configureEach {

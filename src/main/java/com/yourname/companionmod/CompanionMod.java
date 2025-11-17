@@ -14,10 +14,13 @@ import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
 import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.neoforged.neoforge.event.entity.EntityAttributeCreationEvent;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Mod(CompanionMod.MOD_ID)
 public class CompanionMod {
     public static final String MOD_ID = "companionmod";
+    public static final Logger LOGGER = LoggerFactory.getLogger(CompanionMod.class);
 
     public CompanionMod(IEventBus modEventBus, Dist dist) {
         modEventBus.addListener(this::commonSetup);
