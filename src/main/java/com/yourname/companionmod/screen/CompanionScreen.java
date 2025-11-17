@@ -38,8 +38,8 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
         if (companion != null) {
             InventoryScreen.renderEntityInInventoryFollowsMouse(
                 guiGraphics,
-                (float)(x + 51), (float)(y + 75), 30f,
-                Vector3f.ZERO,
+                x + 51, y + 75, 30,
+                new Vector3f(0f, 0f, 0f),
                 new Quaternionf().rotationXYZ(0, 0, 0),
                 new Quaternionf().rotationY((float)Math.PI),
                 companion
