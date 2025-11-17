@@ -14,11 +14,13 @@ import java.util.List;
 import java.util.function.BooleanSupplier;
 
 public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
+    private static final ResourceLocation SURVIVAL_TEXTURE =
+        ResourceLocation.fromNamespaceAndPath("minecraft", "textures/gui/container/inventory.png");
     private static final ResourceLocation GENERIC_CHEST_TEXTURE =
         ResourceLocation.fromNamespaceAndPath("minecraft", "textures/gui/container/generic_54.png");
-    private static final int CHEST_TEXTURE_WIDTH = 176;
-    private static final int PLAYER_SECTION_HEIGHT = 95;
-    private static final int EQUIPMENT_COLUMN_WIDTH = 30;
+    private static final int PANEL_WIDTH = 176;
+    private static final int COMPANION_SECTION_HEIGHT = 166;
+    private static final int PLAYER_SECTION_HEIGHT = 96;
     private static final int SLOT_BACKGROUND_U = 7;
     private static final int SLOT_BACKGROUND_V = 17;
     private static final int SLOT_BACKGROUND_SIZE = 18;
@@ -36,9 +38,8 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
 
     public CompanionScreen(CompanionMenu menu, Inventory playerInventory, Component title) {
         super(menu, playerInventory, title);
-        int storageSectionHeight = getStorageSectionHeight();
-        this.imageWidth = CHEST_TEXTURE_WIDTH + EQUIPMENT_COLUMN_WIDTH;
-        this.imageHeight = storageSectionHeight + PLAYER_SECTION_HEIGHT;
+        this.imageWidth = PANEL_WIDTH;
+        this.imageHeight = COMPANION_SECTION_HEIGHT + PLAYER_SECTION_HEIGHT;
         this.titleLabelX = CompanionMenu.STORAGE_START_X;
         this.titleLabelY = 6;
         this.inventoryLabelX = CompanionMenu.STORAGE_START_X;
@@ -65,9 +66,10 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
         int x = this.leftPos;
         int y = this.topPos;
 
-        guiGraphics.blit(GENERIC_CHEST_TEXTURE, x, y, 0, 0, CHEST_TEXTURE_WIDTH, this.imageHeight);
-        this.renderEquipmentColumnBackground(guiGraphics, x, y);
-        this.renderEquipmentSlotFrames(guiGraphics);
+        guiGraphics.blit(SURVIVAL_TEXTURE, x, y, 0, 0, this.imageWidth, COMPANION_SECTION_HEIGHT);
+        guiGraphics.blit(GENERIC_CHEST_TEXTURE, x, y + COMPANION_SECTION_HEIGHT, 0, 126,
+            this.imageWidth, PLAYER_SECTION_HEIGHT);
+        this.renderManualSlotFrames(guiGraphics);
         this.renderExperienceOverlay(guiGraphics);
         if (this.settingsVisible) {
             this.renderSettingsPanel(guiGraphics);
@@ -81,36 +83,11 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
         this.renderTooltip(guiGraphics, mouseX, mouseY);
     }
 
-    private static int getStorageSectionHeight() {
-        return 17 + CompanionMenu.STORAGE_ROWS * CompanionMenu.SLOT_SPACING;
-    }
-
-    private void renderEquipmentColumnBackground(GuiGraphics guiGraphics, int x, int y) {
-        int extensionX = x + CHEST_TEXTURE_WIDTH;
-        int availableWidth = this.imageWidth - CHEST_TEXTURE_WIDTH;
-        if (availableWidth <= 0) {
-            return;
-        }
-
-        int copyU = CHEST_TEXTURE_WIDTH - availableWidth;
-        guiGraphics.blit(GENERIC_CHEST_TEXTURE, extensionX, y, copyU, 0, availableWidth, this.imageHeight);
-    }
-
-    private void renderEquipmentSlotFrames(GuiGraphics guiGraphics) {
-        int slotX = this.leftPos + CompanionMenu.EQUIPMENT_COLUMN_X - 1;
-        int armorStartY = this.topPos + CompanionMenu.EQUIPMENT_START_Y - 1;
-        for (int i = 0; i < 4; i++) {
-            int y = armorStartY + i * CompanionMenu.SLOT_SPACING;
-            guiGraphics.blit(GENERIC_CHEST_TEXTURE, slotX, y, SLOT_BACKGROUND_U, SLOT_BACKGROUND_V,
-                SLOT_BACKGROUND_SIZE, SLOT_BACKGROUND_SIZE);
-        }
-
-        int handStartY = this.topPos + CompanionMenu.HAND_SLOT_START_Y - 1;
-        for (int i = 0; i < 2; i++) {
-            int y = handStartY + i * CompanionMenu.SLOT_SPACING;
-            guiGraphics.blit(GENERIC_CHEST_TEXTURE, slotX, y, SLOT_BACKGROUND_U, SLOT_BACKGROUND_V,
-                SLOT_BACKGROUND_SIZE, SLOT_BACKGROUND_SIZE);
-        }
+    private void renderManualSlotFrames(GuiGraphics guiGraphics) {
+        this.blitSlot(guiGraphics, this.leftPos + CompanionMenu.MAIN_HAND_SLOT_X - 1,
+            this.topPos + CompanionMenu.MAIN_HAND_SLOT_Y - 1);
+        this.blitSlot(guiGraphics, this.leftPos + CompanionMenu.OFF_HAND_SLOT_X - 1,
+            this.topPos + CompanionMenu.OFF_HAND_SLOT_Y - 1);
     }
 
     private void renderExperienceOverlay(GuiGraphics guiGraphics) {
@@ -127,14 +104,19 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
         guiGraphics.drawString(this.font, xpText, textX, textY + 9, 0x3F2F0A, false);
 
         if (needed > 0) {
-            int barWidth = 90;
-            int barX = this.leftPos + this.imageWidth - barWidth - EQUIPMENT_COLUMN_WIDTH - 10;
-            int barY = this.topPos + 20;
+            int barWidth = 120;
+            int barX = this.leftPos + CompanionMenu.STORAGE_START_X;
+            int barY = this.topPos + 22;
             guiGraphics.fill(barX, barY, barX + barWidth, barY + 4, XP_BAR_BG);
             float progress = Math.min(1.0F, experience / (float)Math.max(1, needed));
             int fillWidth = (int)(barWidth * progress);
             guiGraphics.fill(barX + 1, barY + 1, barX + 1 + fillWidth, barY + 3, XP_BAR_FILL);
         }
+    }
+
+    private void blitSlot(GuiGraphics guiGraphics, int x, int y) {
+        guiGraphics.blit(GENERIC_CHEST_TEXTURE, x, y, SLOT_BACKGROUND_U, SLOT_BACKGROUND_V,
+            SLOT_BACKGROUND_SIZE, SLOT_BACKGROUND_SIZE);
     }
 
     private void toggleSettingsPanel() {
@@ -209,7 +191,7 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
     }
 
     private int getSettingsPanelY() {
-        return this.topPos + 30;
+        return this.topPos + 40;
     }
 
     private static class SettingEntry {

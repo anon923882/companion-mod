@@ -22,12 +22,17 @@ public class CompanionMenu extends AbstractContainerMenu {
     public static final int STORAGE_COLUMNS = 9;
     public static final int STORAGE_ROWS = 3;
     public static final int STORAGE_START_X = 8;
-    public static final int STORAGE_START_Y = 18;
-    public static final int PLAYER_INVENTORY_START_Y = 84;
-    public static final int HOTBAR_Y = 142;
-    public static final int EQUIPMENT_COLUMN_X = STORAGE_START_X + SLOT_SPACING * STORAGE_COLUMNS + 12;
-    public static final int EQUIPMENT_START_Y = STORAGE_START_Y;
-    public static final int HAND_SLOT_START_Y = EQUIPMENT_START_Y + SLOT_SPACING * 4 + 10;
+    public static final int COMPANION_STORAGE_START_Y = 84;
+    public static final int COMPANION_HOTBAR_Y = 142;
+    public static final int PLAYER_SECTION_OFFSET_Y = 166;
+    public static final int PLAYER_INVENTORY_START_Y = PLAYER_SECTION_OFFSET_Y + 18;
+    public static final int PLAYER_HOTBAR_Y = PLAYER_INVENTORY_START_Y + 58;
+    public static final int ARMOR_COLUMN_X = 8;
+    public static final int ARMOR_START_Y = 8;
+    public static final int MAIN_HAND_SLOT_X = 98;
+    public static final int MAIN_HAND_SLOT_Y = 18;
+    public static final int OFF_HAND_SLOT_X = 77;
+    public static final int OFF_HAND_SLOT_Y = 62;
     public static final int BUTTON_TOGGLE_XP = 1;
     public static final int BUTTON_TOGGLE_PASSIVE = 2;
     public static final int BUTTON_TOGGLE_HOSTILE = 3;
@@ -65,33 +70,39 @@ public class CompanionMenu extends AbstractContainerMenu {
         companionInventory.startOpen(playerInventory.player);
         this.addDataSlots(this.dataAccess);
 
-        // Companion storage inventory (27 slots only - 3 rows x 9 columns)
+        // Companion storage inventory (3 rows x 9 columns)
         for (int row = 0; row < STORAGE_ROWS; row++) {
             for (int col = 0; col < STORAGE_COLUMNS; col++) {
                 int index = col + row * STORAGE_COLUMNS;
                 this.addSlot(new Slot(companionInventory, index,
                     STORAGE_START_X + col * SLOT_SPACING,
-                    STORAGE_START_Y + row * SLOT_SPACING));
+                    COMPANION_STORAGE_START_Y + row * SLOT_SPACING));
             }
         }
 
+        // Companion hotbar (final row)
+        int hotbarStart = CompanionEntity.STORAGE_SIZE - STORAGE_COLUMNS;
+        for (int col = 0; col < STORAGE_COLUMNS; col++) {
+            int index = hotbarStart + col;
+            this.addSlot(new Slot(companionInventory, index,
+                STORAGE_START_X + col * SLOT_SPACING, COMPANION_HOTBAR_Y));
+        }
+
         // Equipment slots (separate from storage grid)
-        int equipmentColumnX = EQUIPMENT_COLUMN_X;
-        int equipmentStartY = EQUIPMENT_START_Y;
         this.addSlot(new ArmorSlot(companionInventory, CompanionEntity.HELMET_SLOT,
-            equipmentColumnX, equipmentStartY, ArmorItem.Type.HELMET));
+            ARMOR_COLUMN_X, ARMOR_START_Y, ArmorItem.Type.HELMET));
         this.addSlot(new ArmorSlot(companionInventory, CompanionEntity.CHEST_SLOT,
-            equipmentColumnX, equipmentStartY + SLOT_SPACING, ArmorItem.Type.CHESTPLATE));
+            ARMOR_COLUMN_X, ARMOR_START_Y + SLOT_SPACING, ArmorItem.Type.CHESTPLATE));
         this.addSlot(new ArmorSlot(companionInventory, CompanionEntity.LEGS_SLOT,
-            equipmentColumnX, equipmentStartY + SLOT_SPACING * 2, ArmorItem.Type.LEGGINGS));
+            ARMOR_COLUMN_X, ARMOR_START_Y + SLOT_SPACING * 2, ArmorItem.Type.LEGGINGS));
         this.addSlot(new ArmorSlot(companionInventory, CompanionEntity.BOOTS_SLOT,
-            equipmentColumnX, equipmentStartY + SLOT_SPACING * 3, ArmorItem.Type.BOOTS));
+            ARMOR_COLUMN_X, ARMOR_START_Y + SLOT_SPACING * 3, ArmorItem.Type.BOOTS));
 
         // Hand slots
-        int handsStartY = HAND_SLOT_START_Y;
-        this.addSlot(new MainHandSlot(companionInventory, CompanionEntity.MAIN_HAND_SLOT, equipmentColumnX, handsStartY));
+        this.addSlot(new MainHandSlot(companionInventory, CompanionEntity.MAIN_HAND_SLOT,
+            MAIN_HAND_SLOT_X, MAIN_HAND_SLOT_Y));
         this.addSlot(new OffHandSlot(companionInventory, CompanionEntity.OFF_HAND_SLOT,
-            equipmentColumnX, handsStartY + SLOT_SPACING));
+            OFF_HAND_SLOT_X, OFF_HAND_SLOT_Y));
 
         // Player inventory (3 rows x 9 columns)
         for (int row = 0; row < 3; row++) {
@@ -105,7 +116,7 @@ public class CompanionMenu extends AbstractContainerMenu {
         // Player hotbar (9 columns)
         for (int col = 0; col < 9; col++) {
             this.addSlot(new Slot(playerInventory, col,
-                STORAGE_START_X + col * SLOT_SPACING, HOTBAR_Y));
+                STORAGE_START_X + col * SLOT_SPACING, PLAYER_HOTBAR_Y));
         }
     }
 

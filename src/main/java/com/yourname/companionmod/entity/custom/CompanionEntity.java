@@ -57,7 +57,11 @@ public class CompanionEntity extends PathfinderMob {
     private static final EntityDataAccessor<Boolean> AUTO_EQUIP =
         SynchedEntityData.defineId(CompanionEntity.class, EntityDataSerializers.BOOLEAN);
     
-    public static final int STORAGE_SIZE = 27;
+    private static final int STORAGE_ROWS = 3;
+    private static final int STORAGE_COLUMNS = 9;
+    private static final int HOTBAR_SIZE = 9;
+    public static final int STORAGE_SIZE = STORAGE_ROWS * STORAGE_COLUMNS + HOTBAR_SIZE; // 36 slots like a player
+    public static final int HOTBAR_START = STORAGE_ROWS * STORAGE_COLUMNS;
     public static final int MAIN_HAND_SLOT = STORAGE_SIZE;
     public static final int OFF_HAND_SLOT = STORAGE_SIZE + 1;
     public static final int BOOTS_SLOT = STORAGE_SIZE + 2;
@@ -285,6 +289,7 @@ public class CompanionEntity extends PathfinderMob {
         try {
             if (this.isAutoEquipEnabled()) {
                 this.evaluateBestEquipment(true);
+                this.syncEquipmentFromInventory();
             } else {
                 this.fillEmptyEquipmentSlots();
                 this.syncEquipmentFromInventory();
@@ -441,15 +446,67 @@ public class CompanionEntity extends PathfinderMob {
         if (this.getHealth() / this.getMaxHealth() > SELF_HEAL_THRESHOLD) {
             return;
         }
-        ItemStack held = this.inventory.getItem(MAIN_HAND_SLOT);
-        if (held.isEmpty() || !held.has(DataComponents.FOOD)) {
+        int slot = this.findFoodSlot();
+        if (slot < 0) {
             return;
         }
+        ItemStack stack = this.inventory.getItem(slot);
+        if (stack.isEmpty()) {
+            return;
+        }
+        ItemStack single = stack.split(1);
+        this.inventory.setItem(slot, stack);
+        ItemStack leftovers = this.eat(this.level(), single);
+        if (!leftovers.isEmpty()) {
+            leftovers = this.storeOrDrop(leftovers);
+            if (!leftovers.isEmpty()) {
+                this.spawnAtLocation(leftovers);
+            }
+        }
+        if (slot >= STORAGE_SIZE) {
+            this.syncEquipmentFromInventory();
+        }
         this.level().gameEvent(this, GameEvent.EAT, this.position());
-        ItemStack result = held.getItem().finishUsingItem(held, this.level(), this);
-        this.inventory.setItem(MAIN_HAND_SLOT, result);
         this.playSound(SoundEvents.GENERIC_EAT, 1.0F, 1.0F);
         this.healCooldown = SELF_HEAL_COOLDOWN_TICKS;
+    }
+
+    private int findFoodSlot() {
+        ItemStack mainHand = this.inventory.getItem(MAIN_HAND_SLOT);
+        if (!mainHand.isEmpty() && mainHand.has(DataComponents.FOOD)) {
+            return MAIN_HAND_SLOT;
+        }
+        ItemStack offHand = this.inventory.getItem(OFF_HAND_SLOT);
+        if (!offHand.isEmpty() && offHand.has(DataComponents.FOOD)) {
+            return OFF_HAND_SLOT;
+        }
+        for (int i = 0; i < STORAGE_SIZE; i++) {
+            ItemStack candidate = this.inventory.getItem(i);
+            if (!candidate.isEmpty() && candidate.has(DataComponents.FOOD)) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private ItemStack storeOrDrop(ItemStack stack) {
+        for (int i = 0; i < STORAGE_SIZE; i++) {
+            ItemStack existing = this.inventory.getItem(i);
+            if (existing.isEmpty()) {
+                this.inventory.setItem(i, stack);
+                return ItemStack.EMPTY;
+            }
+            if (ItemStack.isSameItemSameComponents(existing, stack)
+                    && existing.getCount() < existing.getMaxStackSize()) {
+                int transferable = Math.min(stack.getCount(), existing.getMaxStackSize() - existing.getCount());
+                existing.grow(transferable);
+                stack.shrink(transferable);
+                if (stack.isEmpty()) {
+                    return ItemStack.EMPTY;
+                }
+            }
+        }
+        return stack;
     }
 
     private void tryTeleportToOwner() {

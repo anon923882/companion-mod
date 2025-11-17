@@ -1,7 +1,6 @@
 {
   "entity.companionmod.companion": "Companion",
   "container.companionmod.companion_inventory": "Companion Inventory",
-  "gui.companionmod.equip_best": "Equip Best",
   "gui.companionmod.settings": "Companion Settings",
   "gui.companionmod.setting.pickup_xp": "Pick up XP",
   "gui.companionmod.setting.passive_hunt": "Hunt passive mobs",
