@@ -1,6 +1,7 @@
 package com.yourname.companionmod.menu;
 
 import com.yourname.companionmod.entity.custom.CompanionEntity;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.Container;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.player.Inventory;
@@ -147,7 +148,8 @@ public class CompanionMenu extends AbstractContainerMenu {
     }
 
     private static boolean isValidMainHandItem(ItemStack stack) {
-        return stack.isEdible() || stack.getItem() instanceof SwordItem || stack.getItem() instanceof TieredItem;
+        return stack.has(DataComponents.FOOD) || stack.getItem() instanceof SwordItem
+            || stack.getItem() instanceof TieredItem;
     }
 
     private static int getSlotIndexForArmor(ArmorItem.Type type) {
@@ -156,6 +158,7 @@ public class CompanionMenu extends AbstractContainerMenu {
             case CHESTPLATE -> CompanionEntity.CHEST_SLOT;
             case LEGGINGS -> CompanionEntity.LEGS_SLOT;
             case BOOTS -> CompanionEntity.BOOTS_SLOT;
+            default -> throw new IllegalStateException("Unexpected armor slot: " + type);
         };
     }
 

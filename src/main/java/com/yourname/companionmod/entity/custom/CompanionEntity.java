@@ -1,7 +1,7 @@
 package com.yourname.companionmod.entity.custom;
 
-import com.google.common.collect.Multimap;
 import com.yourname.companionmod.menu.CompanionMenu;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.syncher.EntityDataAccessor;
@@ -16,7 +16,6 @@ import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.PathfinderMob;
-import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.goal.*;
@@ -26,7 +25,6 @@ import net.minecraft.world.item.AxeItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.SwordItem;
 import net.minecraft.world.item.TieredItem;
-import net.minecraft.world.item.enchantment.Enchantments;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.gameevent.GameEvent;
 import java.util.UUID;
@@ -146,14 +144,13 @@ public class CompanionEntity extends PathfinderMob {
     }
 
     @Override
-    protected void dropCustomDeathLoot(net.minecraft.world.damagesource.DamageSource source, boolean recentlyHit) {
-        super.dropCustomDeathLoot(source, recentlyHit);
-        if (!this.level().isClientSide) {
-            for (int i = 0; i < this.inventory.getContainerSize(); i++) {
-                ItemStack stack = this.inventory.removeItemNoUpdate(i);
-                if (!stack.isEmpty()) {
-                    this.spawnAtLocation(stack);
-                }
+    protected void dropCustomDeathLoot(net.minecraft.server.level.ServerLevel level,
+            net.minecraft.world.damagesource.DamageSource source, boolean recentlyHit) {
+        super.dropCustomDeathLoot(level, source, recentlyHit);
+        for (int i = 0; i < this.inventory.getContainerSize(); i++) {
+            ItemStack stack = this.inventory.removeItemNoUpdate(i);
+            if (!stack.isEmpty()) {
+                this.spawnAtLocation(stack);
             }
         }
     }
@@ -293,18 +290,13 @@ public class CompanionEntity extends PathfinderMob {
             return 0;
         }
         double attack = 0;
-        Multimap<net.minecraft.world.entity.ai.attributes.Attribute, AttributeModifier> modifiers =
-            stack.getAttributeModifiers(EquipmentSlot.MAINHAND);
-        if (modifiers.containsKey(Attributes.ATTACK_DAMAGE)) {
-            for (AttributeModifier modifier : modifiers.get(Attributes.ATTACK_DAMAGE)) {
-                attack += modifier.amount();
-            }
+        if (stack.getItem() instanceof SwordItem sword) {
+            attack = 4.0 + sword.getTier().getAttackDamageBonus();
+        } else if (stack.getItem() instanceof AxeItem axe) {
+            attack = 3.0 + axe.getTier().getAttackDamageBonus();
+        } else if (stack.getItem() instanceof TieredItem tiered) {
+            attack = 1.0 + tiered.getTier().getAttackDamageBonus();
         }
-        if (attack == 0 && !(stack.getItem() instanceof SwordItem) && !(stack.getItem() instanceof AxeItem)
-                && !(stack.getItem() instanceof TieredItem)) {
-            return 0;
-        }
-        attack += stack.getEnchantmentLevel(Enchantments.SHARPNESS);
         return attack;
     }
 
@@ -312,9 +304,7 @@ public class CompanionEntity extends PathfinderMob {
         if (stack.isEmpty() || !(stack.getItem() instanceof ArmorItem armor) || armor.getType() != armorType) {
             return 0;
         }
-        double score = armor.getDefense() * 10.0 + armor.getToughness();
-        score += stack.getEnchantmentLevel(Enchantments.ALL_DAMAGE_PROTECTION) * 1.5;
-        return score;
+        return armor.getDefense() * 10.0 + armor.getToughness();
     }
 
     private void syncEquipmentFromInventory() {
@@ -344,7 +334,7 @@ public class CompanionEntity extends PathfinderMob {
             return;
         }
         ItemStack held = this.inventory.getItem(MAIN_HAND_SLOT);
-        if (held.isEmpty() || !held.isEdible()) {
+        if (held.isEmpty() || !held.has(DataComponents.FOOD)) {
             return;
         }
         this.level().gameEvent(this, GameEvent.EAT, this.position());
