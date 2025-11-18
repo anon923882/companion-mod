@@ -1,6 +1,8 @@
 package com.yourname.companionmod.client.gui;
 
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 
@@ -31,8 +33,8 @@ final class EquipmentColumnRenderer {
         return CompanionGuiTextures.UPGRADE_BOTTOM_HEIGHT + slots * CompanionGuiTextures.UPGRADE_SLOT_HEIGHT;
     }
 
-    static void renderIcons(GuiGraphics guiGraphics, int slotX, int slotY, int slotSpacing, int slots) {
-        ItemStack[] icons = new ItemStack[] {
+    static void renderIcons(GuiGraphics guiGraphics, Player player, int slotX, int slotY, int slotSpacing, int slots) {
+        ItemStack[] fallbackIcons = new ItemStack[] {
             HELMET_ICON,
             CHEST_ICON,
             LEGS_ICON,
@@ -40,9 +42,23 @@ final class EquipmentColumnRenderer {
             MAIN_HAND_ICON,
             OFF_HAND_ICON
         };
-        int renderSlots = Math.min(slots, icons.length);
+        EquipmentSlot[] equipmentOrder = new EquipmentSlot[] {
+            EquipmentSlot.HEAD,
+            EquipmentSlot.CHEST,
+            EquipmentSlot.LEGS,
+            EquipmentSlot.FEET,
+            EquipmentSlot.MAINHAND,
+            EquipmentSlot.OFFHAND
+        };
+        int renderSlots = Math.min(slots, equipmentOrder.length);
         for (int i = 0; i < renderSlots; i++) {
-            ItemStack icon = icons[i];
+            ItemStack icon = ItemStack.EMPTY;
+            if (player != null) {
+                icon = player.getItemBySlot(equipmentOrder[i]);
+            }
+            if (icon.isEmpty()) {
+                icon = fallbackIcons[i];
+            }
             if (!icon.isEmpty()) {
                 guiGraphics.renderItem(icon, slotX + 1, slotY + 1 + i * slotSpacing);
             }

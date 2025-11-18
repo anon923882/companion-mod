@@ -14,12 +14,14 @@ public final class CompanionGuiHelper {
     }
 
     public static void renderSlotArea(GuiGraphics guiGraphics, int x, int y, int columns, int rows) {
-        if (columns <= 0 || rows <= 0) {
+        renderSlotArea(guiGraphics, x, y, columns, rows, 0);
+    }
+
+    public static void renderSlotArea(GuiGraphics guiGraphics, int x, int y, int columns, int rows, int extraSlots) {
+        if (columns <= 0 || (rows <= 0 && extraSlots <= 0)) {
             return;
         }
-        int width = columns * CompanionGuiTextures.SLOT_SIZE;
-        int height = rows * CompanionGuiTextures.SLOT_SIZE;
-        guiGraphics.blit(CompanionGuiTextures.SLOTS_BACKGROUND, x, y, 0, 0, width, height, 256, 256);
+        SlotBackgroundRenderer.render(guiGraphics, x, y, columns, rows, extraSlots);
     }
 
     public static void renderEquipmentColumn(GuiGraphics guiGraphics, int leftPos, int topPos, int slots) {
@@ -29,11 +31,12 @@ public final class CompanionGuiHelper {
         EquipmentColumnRenderer.render(guiGraphics, leftPos, topPos, slots);
     }
 
-    public static void renderEquipmentIcons(GuiGraphics guiGraphics, int slotX, int slotY, int slotSpacing, int slots) {
+    public static void renderEquipmentIcons(GuiGraphics guiGraphics, net.minecraft.world.entity.player.Player player,
+                                            int slotX, int slotY, int slotSpacing, int slots) {
         if (slots <= 0) {
             return;
         }
-        EquipmentColumnRenderer.renderIcons(guiGraphics, slotX, slotY, slotSpacing, slots);
+        EquipmentColumnRenderer.renderIcons(guiGraphics, player, slotX, slotY, slotSpacing, slots);
     }
 
     public static void renderSettingsPanel(GuiGraphics guiGraphics, int x, int y, int width, int height) {

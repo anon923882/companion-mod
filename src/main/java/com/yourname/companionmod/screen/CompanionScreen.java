@@ -12,7 +12,8 @@ import net.minecraft.world.entity.player.Inventory;
 public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
     private static final int STORAGE_ROWS_PIXEL_HEIGHT = CompanionMenu.STORAGE_ROWS * CompanionGuiTextures.SLOT_SIZE;
     private static final int BASE_PANEL_HEIGHT = 114;
-    private static final int SETTINGS_PANEL_WIDTH = 118;
+    private static final int SETTINGS_PANEL_SLOT_COLUMNS = 5;
+    private static final int SETTINGS_PANEL_WIDTH = CompanionGuiTextures.SLOT_SIZE * SETTINGS_PANEL_SLOT_COLUMNS + 14;
     private static final int SETTINGS_PANEL_HEIGHT = 92;
     private static final Component FOLLOW_SETTING_LABEL = Component.translatable("gui.companionmod.settings.follow");
     private static final Component AUTO_HEAL_SETTING_LABEL = Component.translatable("gui.companionmod.settings.auto_heal");
@@ -56,11 +57,11 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
 
         this.followToggle = Button.builder(Component.literal(""),
             button -> this.sendMenuButtonRequest(CompanionMenu.BUTTON_TOGGLE_FOLLOW))
-            .bounds(this.leftPos, this.topPos, 80, 20)
+            .bounds(this.leftPos, this.topPos, 80, CompanionGuiTextures.SLOT_SIZE)
             .build();
         this.autoHealToggle = Button.builder(Component.literal(""),
             button -> this.sendMenuButtonRequest(CompanionMenu.BUTTON_TOGGLE_AUTO_HEAL))
-            .bounds(this.leftPos, this.topPos, 80, 20)
+            .bounds(this.leftPos, this.topPos, 80, CompanionGuiTextures.SLOT_SIZE)
             .build();
         this.addRenderableWidget(this.followToggle);
         this.addRenderableWidget(this.autoHealToggle);
@@ -79,7 +80,12 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
 
         CompanionGuiHelper.renderEquipmentColumn(guiGraphics, this.leftPos, this.topPos,
             CompanionMenu.EQUIPMENT_SLOT_COUNT);
-        CompanionGuiHelper.renderEquipmentIcons(guiGraphics, this.leftPos + CompanionMenu.EQUIPMENT_COLUMN_X,
+        int equipmentSlotX = this.leftPos + CompanionMenu.EQUIPMENT_COLUMN_X - 1;
+        int equipmentSlotY = this.topPos + CompanionMenu.EQUIPMENT_START_Y - 1;
+        CompanionGuiHelper.renderSlotArea(guiGraphics, equipmentSlotX, equipmentSlotY, 1,
+            CompanionMenu.EQUIPMENT_SLOT_COUNT);
+        CompanionGuiHelper.renderEquipmentIcons(guiGraphics, this.minecraft != null ? this.minecraft.player : null,
+            this.leftPos + CompanionMenu.EQUIPMENT_COLUMN_X,
             this.topPos + CompanionMenu.EQUIPMENT_START_Y,
             CompanionMenu.EQUIPMENT_SLOT_SPACING, CompanionMenu.EQUIPMENT_SLOT_COUNT);
 
@@ -143,15 +149,17 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
         if (this.followToggle == null || this.autoHealToggle == null) {
             return;
         }
-        int toggleX = this.getSettingsPanelX() + 6;
-        int toggleWidth = SETTINGS_PANEL_WIDTH - 12;
+        int toggleX = this.getSettingsPanelX() + CompanionGuiTextures.STORAGE_X_OFFSET;
+        int toggleWidth = CompanionGuiTextures.SLOT_SIZE * SETTINGS_PANEL_SLOT_COLUMNS;
         int followY = this.getSettingsPanelY() + 26;
         this.followToggle.setX(toggleX);
         this.followToggle.setY(followY);
         this.followToggle.setWidth(toggleWidth);
+        this.followToggle.setHeight(CompanionGuiTextures.SLOT_SIZE);
         this.autoHealToggle.setX(toggleX);
-        this.autoHealToggle.setY(followY + 24);
+        this.autoHealToggle.setY(followY + CompanionGuiTextures.SLOT_SIZE + 8);
         this.autoHealToggle.setWidth(toggleWidth);
+        this.autoHealToggle.setHeight(CompanionGuiTextures.SLOT_SIZE);
     }
 
     private int getSettingsPanelX() {
@@ -167,6 +175,17 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
         int y = this.getSettingsPanelY();
         CompanionGuiHelper.renderSettingsPanel(guiGraphics, x, y, SETTINGS_PANEL_WIDTH, SETTINGS_PANEL_HEIGHT);
         guiGraphics.drawString(this.font, SETTINGS_TITLE, x + 6, y + 8, 0x3F3F3F, false);
+        this.renderSettingsToggleSlots(guiGraphics);
+    }
+
+    private void renderSettingsToggleSlots(GuiGraphics guiGraphics) {
+        if (this.followToggle == null || this.autoHealToggle == null) {
+            return;
+        }
+        CompanionGuiHelper.renderSlotArea(guiGraphics, this.followToggle.getX(), this.followToggle.getY(),
+            SETTINGS_PANEL_SLOT_COLUMNS, 1);
+        CompanionGuiHelper.renderSlotArea(guiGraphics, this.autoHealToggle.getX(), this.autoHealToggle.getY(),
+            SETTINGS_PANEL_SLOT_COLUMNS, 1);
     }
 
 }
