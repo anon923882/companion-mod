@@ -28,4 +28,18 @@ public final class CompanionGuiHelper {
         }
         EquipmentColumnRenderer.render(guiGraphics, leftPos, topPos, slots);
     }
+
+    public static void renderEquipmentIcons(GuiGraphics guiGraphics, int slotX, int slotY, int slotSpacing, int slots) {
+        if (slots <= 0) {
+            return;
+        }
+        EquipmentColumnRenderer.renderIcons(guiGraphics, slotX, slotY, slotSpacing, slots);
+    }
+
+    public static void renderSettingsPanel(GuiGraphics guiGraphics, int x, int y, int width, int height) {
+        if (width <= 0 || height <= 0) {
+            return;
+        }
+        SettingsPanelRenderer.render(guiGraphics, x, y, width, height);
+    }
 }

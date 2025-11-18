@@ -12,6 +12,11 @@ import net.minecraft.world.entity.player.Inventory;
 public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
     private static final int STORAGE_ROWS_PIXEL_HEIGHT = CompanionMenu.STORAGE_ROWS * CompanionGuiTextures.SLOT_SIZE;
     private static final int BASE_PANEL_HEIGHT = 114;
+    private static final int SETTINGS_PANEL_WIDTH = 118;
+    private static final int SETTINGS_PANEL_HEIGHT = 92;
+    private static final Component FOLLOW_SETTING_LABEL = Component.translatable("gui.companionmod.settings.follow");
+    private static final Component AUTO_HEAL_SETTING_LABEL = Component.translatable("gui.companionmod.settings.auto_heal");
+    private static final Component SETTINGS_TITLE = Component.translatable("gui.companionmod.settings.title");
 
     public CompanionScreen(CompanionMenu menu, Inventory playerInventory, Component title) {
         super(menu, playerInventory, title);
@@ -23,6 +28,11 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
         this.inventoryLabelY = this.imageHeight - 94;
     }
 
+    private boolean settingsOpen;
+    private Button settingsButton;
+    private Button followToggle;
+    private Button autoHealToggle;
+
     @Override
     protected void init() {
         super.init();
@@ -32,9 +42,29 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
 
         this.addRenderableWidget(Button.builder(
             Component.translatable("gui.companionmod.equip_best"),
-            button -> this.sendEquipBestRequest())
+            button -> this.sendMenuButtonRequest(CompanionMenu.BUTTON_EQUIP_BEST))
             .bounds(buttonX, buttonY, buttonWidth, 20)
             .build());
+
+        int settingsWidth = 70;
+        this.settingsButton = Button.builder(
+            Component.translatable("gui.companionmod.settings"),
+            button -> this.toggleSettingsPanel())
+            .bounds(buttonX - settingsWidth - 4, buttonY, settingsWidth, 20)
+            .build();
+        this.addRenderableWidget(this.settingsButton);
+
+        this.followToggle = Button.builder(Component.literal(""),
+            button -> this.sendMenuButtonRequest(CompanionMenu.BUTTON_TOGGLE_FOLLOW))
+            .bounds(this.leftPos, this.topPos, 80, 20)
+            .build();
+        this.autoHealToggle = Button.builder(Component.literal(""),
+            button -> this.sendMenuButtonRequest(CompanionMenu.BUTTON_TOGGLE_AUTO_HEAL))
+            .bounds(this.leftPos, this.topPos, 80, 20)
+            .build();
+        this.addRenderableWidget(this.followToggle);
+        this.addRenderableWidget(this.autoHealToggle);
+        this.updateSettingsWidgets();
     }
 
     @Override
@@ -49,6 +79,13 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
 
         CompanionGuiHelper.renderEquipmentColumn(guiGraphics, this.leftPos, this.topPos,
             CompanionMenu.EQUIPMENT_SLOT_COUNT);
+        CompanionGuiHelper.renderEquipmentIcons(guiGraphics, this.leftPos + CompanionMenu.EQUIPMENT_COLUMN_X,
+            this.topPos + CompanionMenu.EQUIPMENT_START_Y,
+            CompanionMenu.EQUIPMENT_SLOT_SPACING, CompanionMenu.EQUIPMENT_SLOT_COUNT);
+
+        if (this.settingsOpen) {
+            this.renderSettingsPanel(guiGraphics);
+        }
     }
 
     @Override
@@ -58,10 +95,78 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
         this.renderTooltip(guiGraphics, mouseX, mouseY);
     }
 
-    private void sendEquipBestRequest() {
+    @Override
+    protected void containerTick() {
+        super.containerTick();
+        this.updateSettingsWidgets();
+    }
+
+    private void sendMenuButtonRequest(int buttonId) {
         if (this.minecraft != null && this.minecraft.gameMode != null) {
-            this.minecraft.gameMode.handleInventoryButtonClick(this.menu.containerId, 0);
+            this.minecraft.gameMode.handleInventoryButtonClick(this.menu.containerId, buttonId);
         }
+    }
+
+    private void toggleSettingsPanel() {
+        this.settingsOpen = !this.settingsOpen;
+        this.updateSettingsWidgets();
+    }
+
+    private void updateSettingsWidgets() {
+        if (this.followToggle == null || this.autoHealToggle == null) {
+            return;
+        }
+        boolean visible = this.settingsOpen;
+        this.followToggle.visible = visible;
+        this.followToggle.active = visible;
+        this.autoHealToggle.visible = visible;
+        this.autoHealToggle.active = visible;
+        this.placeSettingsButtons();
+        this.updateSettingLabels();
+    }
+
+    private void updateSettingLabels() {
+        if (this.followToggle == null || this.autoHealToggle == null) {
+            return;
+        }
+        this.updateToggleLabel(this.followToggle, FOLLOW_SETTING_LABEL, this.menu.isFollowingEnabled());
+        this.updateToggleLabel(this.autoHealToggle, AUTO_HEAL_SETTING_LABEL, this.menu.isAutoHealEnabled());
+    }
+
+    private void updateToggleLabel(Button button, Component label, boolean value) {
+        Component state = Component.translatable(value ? "gui.companionmod.toggle.on"
+            : "gui.companionmod.toggle.off");
+        button.setMessage(label.copy().append(": ").append(state));
+    }
+
+    private void placeSettingsButtons() {
+        if (this.followToggle == null || this.autoHealToggle == null) {
+            return;
+        }
+        int toggleX = this.getSettingsPanelX() + 6;
+        int toggleWidth = SETTINGS_PANEL_WIDTH - 12;
+        int followY = this.getSettingsPanelY() + 26;
+        this.followToggle.setX(toggleX);
+        this.followToggle.setY(followY);
+        this.followToggle.setWidth(toggleWidth);
+        this.autoHealToggle.setX(toggleX);
+        this.autoHealToggle.setY(followY + 24);
+        this.autoHealToggle.setWidth(toggleWidth);
+    }
+
+    private int getSettingsPanelX() {
+        return this.leftPos + this.imageWidth + 6;
+    }
+
+    private int getSettingsPanelY() {
+        return this.topPos + 12;
+    }
+
+    private void renderSettingsPanel(GuiGraphics guiGraphics) {
+        int x = this.getSettingsPanelX();
+        int y = this.getSettingsPanelY();
+        CompanionGuiHelper.renderSettingsPanel(guiGraphics, x, y, SETTINGS_PANEL_WIDTH, SETTINGS_PANEL_HEIGHT);
+        guiGraphics.drawString(this.font, SETTINGS_TITLE, x + 6, y + 8, 0x3F3F3F, false);
     }
 
 }

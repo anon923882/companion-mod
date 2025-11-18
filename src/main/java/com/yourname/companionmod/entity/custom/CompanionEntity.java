@@ -33,8 +33,12 @@ import net.minecraft.world.level.gameevent.GameEvent;
 import java.util.UUID;
 
 public class CompanionEntity extends PathfinderMob {
-    private static final EntityDataAccessor<String> OWNER_UUID = 
+    private static final EntityDataAccessor<String> OWNER_UUID =
         SynchedEntityData.defineId(CompanionEntity.class, EntityDataSerializers.STRING);
+    private static final EntityDataAccessor<Boolean> FOLLOWING_ENABLED =
+        SynchedEntityData.defineId(CompanionEntity.class, EntityDataSerializers.BOOLEAN);
+    private static final EntityDataAccessor<Boolean> AUTO_HEAL_ENABLED =
+        SynchedEntityData.defineId(CompanionEntity.class, EntityDataSerializers.BOOLEAN);
     
     public static final int STORAGE_SIZE = 27;
     public static final int MAIN_HAND_SLOT = STORAGE_SIZE;
@@ -68,6 +72,8 @@ public class CompanionEntity extends PathfinderMob {
     protected void defineSynchedData(SynchedEntityData.Builder builder) {
         super.defineSynchedData(builder);
         builder.define(OWNER_UUID, "");
+        builder.define(FOLLOWING_ENABLED, true);
+        builder.define(AUTO_HEAL_ENABLED, true);
     }
 
     @Override
@@ -116,6 +122,22 @@ public class CompanionEntity extends PathfinderMob {
         return this.inventory;
     }
 
+    public boolean isFollowEnabled() {
+        return this.entityData.get(FOLLOWING_ENABLED);
+    }
+
+    public void setFollowEnabled(boolean enabled) {
+        this.entityData.set(FOLLOWING_ENABLED, enabled);
+    }
+
+    public boolean isAutoHealEnabled() {
+        return this.entityData.get(AUTO_HEAL_ENABLED);
+    }
+
+    public void setAutoHealEnabled(boolean enabled) {
+        this.entityData.set(AUTO_HEAL_ENABLED, enabled);
+    }
+
     @Override
     public void tick() {
         super.tick();
@@ -123,7 +145,9 @@ public class CompanionEntity extends PathfinderMob {
             if (this.healCooldown > 0) {
                 this.healCooldown--;
             }
-            this.tryConsumeHeldFood();
+            if (this.isAutoHealEnabled()) {
+                this.tryConsumeHeldFood();
+            }
             this.tryTeleportToOwner();
         }
     }
@@ -135,6 +159,8 @@ public class CompanionEntity extends PathfinderMob {
             tag.putString("OwnerUUID", this.getOwnerUUID().toString());
         }
         tag.put("Inventory", this.inventory.createTag(this.registryAccess()));
+        tag.putBoolean("FollowEnabled", this.isFollowEnabled());
+        tag.putBoolean("AutoHealEnabled", this.isAutoHealEnabled());
     }
 
     @Override
@@ -146,6 +172,12 @@ public class CompanionEntity extends PathfinderMob {
         if (tag.contains("Inventory")) {
             this.inventory.fromTag(tag.getList("Inventory", 10), this.registryAccess());
             this.onInventoryChanged();
+        }
+        if (tag.contains("FollowEnabled")) {
+            this.setFollowEnabled(tag.getBoolean("FollowEnabled"));
+        }
+        if (tag.contains("AutoHealEnabled")) {
+            this.setAutoHealEnabled(tag.getBoolean("AutoHealEnabled"));
         }
     }
 
@@ -174,6 +206,9 @@ public class CompanionEntity extends PathfinderMob {
 
         @Override
         public boolean canUse() {
+            if (!this.companion.isFollowEnabled()) {
+                return false;
+            }
             Player player = this.companion.getOwner();
             if (player == null || player.isSpectator()) {
                 return false;
@@ -187,7 +222,8 @@ public class CompanionEntity extends PathfinderMob {
 
         @Override
         public boolean canContinueToUse() {
-            return !this.companion.getNavigation().isDone() 
+            return this.companion.isFollowEnabled()
+                && !this.companion.getNavigation().isDone()
                 && this.companion.distanceToSqr(this.owner) > (double)(this.stopDistance * this.stopDistance);
         }
 
