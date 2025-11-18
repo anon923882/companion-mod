@@ -64,18 +64,19 @@ tasks.register('fetchSophisticatedTextures') {
 
     def outputDir = downloadedResourcesDir.map { it.dir('assets/companionmod/textures/gui') }
     outputs.dir(outputDir)
+    inputs.property('textureSources', sophisticatedCoreTextures)
 
     doLast {
         def targetDir = outputDir.get().asFile
         sophisticatedCoreTextures.each { filename, url ->
             def targetFile = new File(targetDir, filename)
             targetFile.parentFile.mkdirs()
-            logger.lifecycle("Fetching $filename from $url")
-            new URL(url).withInputStream { inputStream ->
-                targetFile.withOutputStream { outputStream ->
-                    outputStream << inputStream
-                }
+            if (targetFile.exists()) {
+                logger.lifecycle("Reusing cached $filename at ${targetFile.absolutePath}")
+            } else {
+                logger.lifecycle("Downloading $filename from $url")
             }
+            ant.get(src: url, dest: targetFile, skipexisting: 'true')
         }
     }
 }
