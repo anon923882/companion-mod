@@ -8,6 +8,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.Container;
@@ -400,6 +401,19 @@ public class CompanionEntity extends PathfinderMob {
 
         this.teleportToWithTicket(owner.getX(), owner.getY(), owner.getZ());
         this.getNavigation().stop();
+    }
+
+    private void teleportToWithTicket(double x, double y, double z) {
+        if (!(this.level() instanceof ServerLevel serverLevel)) {
+            return;
+        }
+
+        BlockPos blockPos = BlockPos.containing(x, y, z);
+        if (!serverLevel.isLoaded(blockPos) || !serverLevel.getWorldBorder().isWithinBounds(blockPos)) {
+            return;
+        }
+
+        this.teleportTo(x, y, z);
     }
 
     private boolean canTeleportTo(BlockPos target) {
