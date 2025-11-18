@@ -1,5 +1,7 @@
 package com.yourname.companionmod.screen;
 
+import com.yourname.companionmod.client.gui.CompanionGuiHelper;
+import com.yourname.companionmod.client.gui.CompanionGuiTextures;
 import com.yourname.companionmod.menu.CompanionMenu;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
@@ -8,17 +10,17 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
 
 public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
-    private static final int PANEL_OUTLINE_COLOR = 0xFF000000;
-    private static final int PANEL_BACKGROUND_COLOR = 0xFF151515;
+    private static final int STORAGE_ROWS_PIXEL_HEIGHT = CompanionMenu.STORAGE_ROWS * CompanionGuiTextures.SLOT_SIZE;
+    private static final int BASE_PANEL_HEIGHT = 114;
 
     public CompanionScreen(CompanionMenu menu, Inventory playerInventory, Component title) {
         super(menu, playerInventory, title);
-        this.imageWidth = 222;
-        this.imageHeight = 222;
+        this.imageWidth = CompanionMenu.STORAGE_COLUMNS * CompanionGuiTextures.SLOT_SIZE + 14;
+        this.imageHeight = BASE_PANEL_HEIGHT + STORAGE_ROWS_PIXEL_HEIGHT;
         this.titleLabelX = CompanionMenu.STORAGE_START_X;
         this.titleLabelY = 6;
         this.inventoryLabelX = CompanionMenu.STORAGE_START_X;
-        this.inventoryLabelY = CompanionMenu.PLAYER_INVENTORY_START_Y - 12;
+        this.inventoryLabelY = this.imageHeight - 94;
     }
 
     @Override
@@ -40,24 +42,13 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
         int x = this.leftPos;
         int y = this.topPos;
 
-        renderPanelBackground(guiGraphics, x, y, this.imageWidth, this.imageHeight);
+        CompanionGuiHelper.renderStorageBackground(guiGraphics, x, y, this.imageWidth, STORAGE_ROWS_PIXEL_HEIGHT);
 
-        renderSlotPanel(guiGraphics, x + CompanionMenu.STORAGE_START_X,
-            y + CompanionMenu.STORAGE_START_Y, CompanionMenu.STORAGE_COLUMNS, CompanionMenu.STORAGE_ROWS);
+        CompanionGuiHelper.renderSlotArea(guiGraphics, x + CompanionGuiTextures.STORAGE_X_OFFSET,
+            y + CompanionGuiTextures.STORAGE_Y_OFFSET, CompanionMenu.STORAGE_COLUMNS, CompanionMenu.STORAGE_ROWS);
 
-        renderSlotPanel(guiGraphics, x + CompanionMenu.STORAGE_START_X,
-            y + CompanionMenu.PLAYER_INVENTORY_START_Y, 9, 3);
-
-        renderSlotPanel(guiGraphics, x + CompanionMenu.STORAGE_START_X,
-            y + CompanionMenu.HOTBAR_Y, 9, 1);
-
-        renderSlotPanel(guiGraphics, x + CompanionMenu.EQUIPMENT_COLUMN_X,
-            y + CompanionMenu.EQUIPMENT_START_Y, 1, 4);
-
-        renderSlotPanel(guiGraphics, x + CompanionMenu.EQUIPMENT_COLUMN_X,
-            y + CompanionMenu.HAND_SLOT_START_Y, 1, 2);
-
-        this.renderEquipmentSlotBackdrops(guiGraphics, x, y);
+        CompanionGuiHelper.renderEquipmentColumn(guiGraphics, this.leftPos, this.topPos,
+            CompanionMenu.EQUIPMENT_SLOT_COUNT);
     }
 
     @Override
@@ -73,46 +64,4 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
         }
     }
 
-    private void renderEquipmentSlotBackdrops(GuiGraphics guiGraphics, int originX, int originY) {
-        int columnX = originX + CompanionMenu.EQUIPMENT_COLUMN_X - 1;
-        int slotSize = CompanionMenu.SLOT_SPACING;
-        
-        // Render armor slot backdrops
-        for (int i = 0; i < 4; i++) {
-            int slotY = originY + CompanionMenu.EQUIPMENT_START_Y - 1 + i * slotSize;
-            renderSlot(guiGraphics, columnX, slotY);
-        }
-
-        // Render hand slot backdrops
-        int mainHandY = originY + CompanionMenu.HAND_SLOT_START_Y - 1;
-        renderSlot(guiGraphics, columnX, mainHandY);
-        renderSlot(guiGraphics, columnX, mainHandY + slotSize);
-    }
-
-    private static void renderPanelBackground(GuiGraphics guiGraphics, int x, int y, int width, int height) {
-        guiGraphics.fill(x, y, x + width, y + height, PANEL_OUTLINE_COLOR);
-        guiGraphics.fill(x + 1, y + 1, x + width - 1, y + height - 1, PANEL_BACKGROUND_COLOR);
-    }
-
-    private static void renderSlotPanel(GuiGraphics guiGraphics, int startX, int startY, int columns, int rows) {
-        int totalWidth = columns * CompanionMenu.SLOT_SPACING;
-        int totalHeight = rows * CompanionMenu.SLOT_SPACING;
-
-        guiGraphics.fill(startX - 3, startY - 3, startX + totalWidth + 3, startY + totalHeight + 3, PANEL_OUTLINE_COLOR);
-        guiGraphics.fill(startX - 2, startY - 2, startX + totalWidth + 2, startY + totalHeight + 2, PANEL_BACKGROUND_COLOR);
-
-        for (int row = 0; row < rows; row++) {
-            for (int col = 0; col < columns; col++) {
-                int slotX = startX + col * CompanionMenu.SLOT_SPACING - 1;
-                int slotY = startY + row * CompanionMenu.SLOT_SPACING - 1;
-                renderSlot(guiGraphics, slotX, slotY);
-            }
-        }
-    }
-
-    private static void renderSlot(GuiGraphics guiGraphics, int slotX, int slotY) {
-        guiGraphics.fill(slotX, slotY, slotX + CompanionMenu.SLOT_SPACING, slotY + CompanionMenu.SLOT_SPACING, 0xFF2B2B2B);
-        guiGraphics.fill(slotX + 1, slotY + 1, slotX + CompanionMenu.SLOT_SPACING - 1,
-            slotY + CompanionMenu.SLOT_SPACING - 1, 0xFF8B8B8B);
-    }
 }

@@ -20,11 +20,12 @@ public class CompanionMenu extends AbstractContainerMenu {
     public static final int STORAGE_ROWS = 3;
     public static final int STORAGE_START_X = 8;
     public static final int STORAGE_START_Y = 18;
-    public static final int PLAYER_INVENTORY_START_Y = 140;
-    public static final int HOTBAR_Y = 198;
-    public static final int EQUIPMENT_COLUMN_X = STORAGE_START_X + SLOT_SPACING * STORAGE_COLUMNS + 12;
-    public static final int EQUIPMENT_START_Y = STORAGE_START_Y;
-    public static final int HAND_SLOT_START_Y = EQUIPMENT_START_Y + SLOT_SPACING * 4 + 14;
+    public static final int PLAYER_INVENTORY_START_Y = 86;
+    public static final int HOTBAR_Y = 144;
+    public static final int EQUIPMENT_COLUMN_X = -15;
+    public static final int EQUIPMENT_START_Y = 6;
+    public static final int EQUIPMENT_SLOT_SPACING = 16;
+    public static final int EQUIPMENT_SLOT_COUNT = 6;
 
     private final Container companionInventory;
     private final CompanionEntity companion;
@@ -56,21 +57,26 @@ public class CompanionMenu extends AbstractContainerMenu {
 
         // Equipment slots (separate from storage grid)
         int equipmentColumnX = EQUIPMENT_COLUMN_X;
-        int equipmentStartY = EQUIPMENT_START_Y;
+        int equipmentSlotY = EQUIPMENT_START_Y;
         this.addSlot(new ArmorSlot(companionInventory, CompanionEntity.HELMET_SLOT,
-            equipmentColumnX, equipmentStartY, ArmorItem.Type.HELMET));
+            equipmentColumnX, equipmentSlotY, ArmorItem.Type.HELMET));
+        equipmentSlotY += EQUIPMENT_SLOT_SPACING;
         this.addSlot(new ArmorSlot(companionInventory, CompanionEntity.CHEST_SLOT,
-            equipmentColumnX, equipmentStartY + SLOT_SPACING, ArmorItem.Type.CHESTPLATE));
+            equipmentColumnX, equipmentSlotY, ArmorItem.Type.CHESTPLATE));
+        equipmentSlotY += EQUIPMENT_SLOT_SPACING;
         this.addSlot(new ArmorSlot(companionInventory, CompanionEntity.LEGS_SLOT,
-            equipmentColumnX, equipmentStartY + SLOT_SPACING * 2, ArmorItem.Type.LEGGINGS));
+            equipmentColumnX, equipmentSlotY, ArmorItem.Type.LEGGINGS));
+        equipmentSlotY += EQUIPMENT_SLOT_SPACING;
         this.addSlot(new ArmorSlot(companionInventory, CompanionEntity.BOOTS_SLOT,
-            equipmentColumnX, equipmentStartY + SLOT_SPACING * 3, ArmorItem.Type.BOOTS));
+            equipmentColumnX, equipmentSlotY, ArmorItem.Type.BOOTS));
+        equipmentSlotY += EQUIPMENT_SLOT_SPACING;
 
-        // Hand slots
-        int handsStartY = HAND_SLOT_START_Y;
-        this.addSlot(new MainHandSlot(companionInventory, CompanionEntity.MAIN_HAND_SLOT, equipmentColumnX, handsStartY));
+        // Hand slots directly continue down the column, matching Sophisticated Backpacks spacing
+        this.addSlot(new MainHandSlot(companionInventory, CompanionEntity.MAIN_HAND_SLOT,
+            equipmentColumnX, equipmentSlotY));
+        equipmentSlotY += EQUIPMENT_SLOT_SPACING;
         this.addSlot(new OffHandSlot(companionInventory, CompanionEntity.OFF_HAND_SLOT,
-            equipmentColumnX, handsStartY + SLOT_SPACING));
+            equipmentColumnX, equipmentSlotY));
 
         // Player inventory (3 rows x 9 columns)
         for (int row = 0; row < 3; row++) {
