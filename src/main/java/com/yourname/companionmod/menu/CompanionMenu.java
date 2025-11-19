@@ -1,6 +1,7 @@
 package com.yourname.companionmod.menu;
 
 import com.yourname.companionmod.entity.custom.CompanionEntity;
+import com.mojang.datafixers.util.Pair;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.Container;
 import net.minecraft.world.SimpleContainer;
@@ -10,6 +11,7 @@ import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.Slot;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ArmorItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.ShieldItem;
@@ -246,6 +248,11 @@ public class CompanionMenu extends AbstractContainerMenu {
         }
 
         @Override
+        public Pair<ResourceLocation, ResourceLocation> getNoItemIcon() {
+            return null;
+        }
+
+        @Override
         public int getMaxStackSize() {
             return 1;
         }
@@ -260,6 +267,11 @@ public class CompanionMenu extends AbstractContainerMenu {
         public boolean mayPlace(ItemStack stack) {
             return isValidMainHandItem(stack);
         }
+
+        @Override
+        public Pair<ResourceLocation, ResourceLocation> getNoItemIcon() {
+            return null;
+        }
     }
 
     private static class OffHandSlot extends Slot {
@@ -270,6 +282,11 @@ public class CompanionMenu extends AbstractContainerMenu {
         @Override
         public boolean mayPlace(ItemStack stack) {
             return stack.getItem() instanceof ShieldItem;
+        }
+
+        @Override
+        public Pair<ResourceLocation, ResourceLocation> getNoItemIcon() {
+            return null;
         }
 
         @Override

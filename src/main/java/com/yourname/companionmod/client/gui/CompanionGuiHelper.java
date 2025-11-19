@@ -40,6 +40,10 @@ public final class CompanionGuiHelper {
         EquipmentColumnRenderer.renderIcons(guiGraphics, menu, slotX, slotY, slotSpacing, slots);
     }
 
+    public static void renderSingleSlot(GuiGraphics guiGraphics, int x, int y) {
+        SlotBackgroundRenderer.renderSlot(guiGraphics, x, y);
+    }
+
     public static void renderSettingsPanel(GuiGraphics guiGraphics, int x, int y, int width, int height) {
         if (width <= 0 || height <= 0) {
             return;

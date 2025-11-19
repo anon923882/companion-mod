@@ -20,6 +20,11 @@ final class SlotBackgroundRenderer {
         }
     }
 
+    static void renderSlot(GuiGraphics guiGraphics, int x, int y) {
+        guiGraphics.blit(CompanionGuiTextures.SLOTS_BACKGROUND, x, y, 0, 0,
+            CompanionGuiTextures.SLOT_SIZE, CompanionGuiTextures.SLOT_SIZE, 256, 256);
+    }
+
     private static void renderRows(GuiGraphics guiGraphics, int x, int y, int slotsInRow, int rows) {
         if (slotsInRow <= 0 || rows <= 0) {
             return;
