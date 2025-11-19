@@ -84,7 +84,7 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
         int equipmentSlotY = this.topPos + CompanionMenu.EQUIPMENT_START_Y - 1;
         CompanionGuiHelper.renderSlotArea(guiGraphics, equipmentSlotX, equipmentSlotY, 1,
             CompanionMenu.EQUIPMENT_SLOT_COUNT);
-        CompanionGuiHelper.renderEquipmentIcons(guiGraphics, this.minecraft != null ? this.minecraft.player : null,
+        CompanionGuiHelper.renderEquipmentIcons(guiGraphics, this.menu,
             this.leftPos + CompanionMenu.EQUIPMENT_COLUMN_X,
             this.topPos + CompanionMenu.EQUIPMENT_START_Y,
             CompanionMenu.EQUIPMENT_SLOT_SPACING, CompanionMenu.EQUIPMENT_SLOT_COUNT);

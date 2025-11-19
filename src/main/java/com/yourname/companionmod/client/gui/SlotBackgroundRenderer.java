@@ -3,8 +3,8 @@ package com.yourname.companionmod.client.gui;
 import net.minecraft.client.gui.GuiGraphics;
 
 /**
- * Reuses Sophisticated Core's slot background tiling logic so stitched slot borders
- * can be rendered for arbitrary grid sizes without stretching artifacts.
+ * Ports Sophisticated Core's stitched slot tiling so empty slot plates look identical
+ * to the backpack UI and can scale to arbitrary grid sizes without stretching.
  */
 final class SlotBackgroundRenderer {
     private SlotBackgroundRenderer() {}
@@ -24,8 +24,14 @@ final class SlotBackgroundRenderer {
         if (slotsInRow <= 0 || rows <= 0) {
             return;
         }
-        int width = slotsInRow * CompanionGuiTextures.SLOT_SIZE;
-        int height = rows * CompanionGuiTextures.SLOT_SIZE;
-        guiGraphics.blit(CompanionGuiTextures.SLOTS_BACKGROUND, x, y, 0, 0, width, height, 256, 256);
+        // Match Sophisticated Core's approach: draw at most 12 rows per pass to preserve the
+        // stitched edges from the texture without scaling artifacts.
+        for (int currentY = y, remainingRows = rows; remainingRows > 0; currentY += 12 * CompanionGuiTextures.SLOT_SIZE) {
+            int renderRows = Math.min(remainingRows, 12);
+            int width = slotsInRow * CompanionGuiTextures.SLOT_SIZE;
+            int height = renderRows * CompanionGuiTextures.SLOT_SIZE;
+            guiGraphics.blit(CompanionGuiTextures.SLOTS_BACKGROUND, x, currentY, 0, 0, width, height, 256, 256);
+            remainingRows -= renderRows;
+        }
     }
 }

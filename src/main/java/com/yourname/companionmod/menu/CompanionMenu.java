@@ -53,6 +53,10 @@ public class CompanionMenu extends AbstractContainerMenu {
                 : new CompanionSettingsData(companion));
     }
 
+    public static int getEquipmentSlotIndex(int offset) {
+        return CompanionEntity.STORAGE_SIZE + offset;
+    }
+
     private CompanionMenu(int containerId, Inventory playerInventory, Container companionInventory,
             CompanionEntity companion, ContainerData settingsData) {
         super(ModMenuTypes.COMPANION_MENU.get(), containerId);

@@ -1,5 +1,6 @@
 package com.yourname.companionmod.client.gui;
 
+import com.yourname.companionmod.menu.CompanionMenu;
 import net.minecraft.client.gui.GuiGraphics;
 
 /**
@@ -31,12 +32,12 @@ public final class CompanionGuiHelper {
         EquipmentColumnRenderer.render(guiGraphics, leftPos, topPos, slots);
     }
 
-    public static void renderEquipmentIcons(GuiGraphics guiGraphics, net.minecraft.world.entity.player.Player player,
+    public static void renderEquipmentIcons(GuiGraphics guiGraphics, CompanionMenu menu,
                                             int slotX, int slotY, int slotSpacing, int slots) {
         if (slots <= 0) {
             return;
         }
-        EquipmentColumnRenderer.renderIcons(guiGraphics, player, slotX, slotY, slotSpacing, slots);
+        EquipmentColumnRenderer.renderIcons(guiGraphics, menu, slotX, slotY, slotSpacing, slots);
     }
 
     public static void renderSettingsPanel(GuiGraphics guiGraphics, int x, int y, int width, int height) {
