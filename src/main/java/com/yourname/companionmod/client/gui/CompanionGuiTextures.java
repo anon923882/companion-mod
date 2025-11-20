@@ -16,8 +16,11 @@ public final class CompanionGuiTextures {
 
     private static final String COMPANION_MOD = "companionmod";
 
-    // Reference sophisticated backpack texture as fallback
-    public static final ResourceLocation GUI_BACKGROUND = new ResourceLocation("sophisticatedbackpacks", "textures/gui/backpack_27.png");
+    // Reference sophisticated backpack texture as fallback using factory method
+    public static final ResourceLocation GUI_BACKGROUND = ResourceLocation.fromNamespaceAndPath(
+        "sophisticatedbackpacks",
+        "textures/gui/backpack_27.png"
+    );
 
     public static final ResourceLocation STORAGE_BACKGROUND_9 = ResourceLocation.fromNamespaceAndPath(
         COMPANION_MOD,
