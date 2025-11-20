@@ -1,13 +1,17 @@
 package com.yourname.companionmod.menu;
 
 import com.yourname.companionmod.entity.custom.CompanionEntity;
+import com.mojang.datafixers.util.Pair;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.Container;
 import net.minecraft.world.SimpleContainer;
+import net.minecraft.world.inventory.ContainerData;
+import net.minecraft.world.inventory.SimpleContainerData;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.Slot;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ArmorItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.ShieldItem;
@@ -20,29 +24,53 @@ public class CompanionMenu extends AbstractContainerMenu {
     public static final int STORAGE_ROWS = 3;
     public static final int STORAGE_START_X = 8;
     public static final int STORAGE_START_Y = 18;
-    public static final int PLAYER_INVENTORY_START_Y = 140;
-    public static final int HOTBAR_Y = 198;
-    public static final int EQUIPMENT_COLUMN_X = STORAGE_START_X + SLOT_SPACING * STORAGE_COLUMNS + 12;
-    public static final int EQUIPMENT_START_Y = STORAGE_START_Y;
-    public static final int HAND_SLOT_START_Y = EQUIPMENT_START_Y + SLOT_SPACING * 4 + 14;
+    public static final int PLAYER_INVENTORY_START_Y = 86;
+    public static final int HOTBAR_Y = 144;
+    public static final int EQUIPMENT_COLUMN_X = -15;
+    public static final int EQUIPMENT_START_Y = 6;
+    public static final int EQUIPMENT_SLOT_SPACING = 16;
+    public static final int EQUIPMENT_SLOT_COUNT = 6;
+    public static final int BUTTON_EQUIP_BEST = 0;
+    public static final int BUTTON_TOGGLE_FOLLOW = 1;
+    public static final int BUTTON_TOGGLE_AUTO_HEAL = 2;
+    public static final int BUTTON_TOGGLE_AUTO_EQUIP = 3;
+    private static final int DATA_FOLLOW_ENABLED = 0;
+    private static final int DATA_AUTO_HEAL_ENABLED = 1;
+    private static final int DATA_AUTO_EQUIP_ENABLED = 2;
+    private static final int SETTINGS_DATA_COUNT = 3;
 
     private final Container companionInventory;
     private final CompanionEntity companion;
+    private final ContainerData settingsData;
 
     // Client constructor
     public CompanionMenu(int containerId, Inventory playerInventory) {
-        this(containerId, playerInventory, new SimpleContainer(CompanionEntity.TOTAL_SLOTS), null);
+        this(containerId, playerInventory, new SimpleContainer(CompanionEntity.TOTAL_SLOTS), null,
+            new SimpleContainerData(SETTINGS_DATA_COUNT));
     }
 
     // Server constructor
     public CompanionMenu(int containerId, Inventory playerInventory, Container companionInventory,
             CompanionEntity companion) {
+        this(containerId, playerInventory, companionInventory, companion,
+            companion == null ? new SimpleContainerData(SETTINGS_DATA_COUNT)
+                : new CompanionSettingsData(companion));
+    }
+
+    public static int getEquipmentSlotIndex(int offset) {
+        return CompanionEntity.STORAGE_SIZE + offset;
+    }
+
+    private CompanionMenu(int containerId, Inventory playerInventory, Container companionInventory,
+            CompanionEntity companion, ContainerData settingsData) {
         super(ModMenuTypes.COMPANION_MENU.get(), containerId);
         checkContainerSize(companionInventory, CompanionEntity.TOTAL_SLOTS);
         this.companionInventory = companionInventory;
         this.companion = companion;
+        this.settingsData = settingsData;
 
         companionInventory.startOpen(playerInventory.player);
+        this.addDataSlots(settingsData);
 
         // Companion storage inventory (27 slots only - 3 rows x 9 columns)
         for (int row = 0; row < STORAGE_ROWS; row++) {
@@ -56,21 +84,26 @@ public class CompanionMenu extends AbstractContainerMenu {
 
         // Equipment slots (separate from storage grid)
         int equipmentColumnX = EQUIPMENT_COLUMN_X;
-        int equipmentStartY = EQUIPMENT_START_Y;
+        int equipmentSlotY = EQUIPMENT_START_Y;
         this.addSlot(new ArmorSlot(companionInventory, CompanionEntity.HELMET_SLOT,
-            equipmentColumnX, equipmentStartY, ArmorItem.Type.HELMET));
+            equipmentColumnX, equipmentSlotY, ArmorItem.Type.HELMET));
+        equipmentSlotY += EQUIPMENT_SLOT_SPACING;
         this.addSlot(new ArmorSlot(companionInventory, CompanionEntity.CHEST_SLOT,
-            equipmentColumnX, equipmentStartY + SLOT_SPACING, ArmorItem.Type.CHESTPLATE));
+            equipmentColumnX, equipmentSlotY, ArmorItem.Type.CHESTPLATE));
+        equipmentSlotY += EQUIPMENT_SLOT_SPACING;
         this.addSlot(new ArmorSlot(companionInventory, CompanionEntity.LEGS_SLOT,
-            equipmentColumnX, equipmentStartY + SLOT_SPACING * 2, ArmorItem.Type.LEGGINGS));
+            equipmentColumnX, equipmentSlotY, ArmorItem.Type.LEGGINGS));
+        equipmentSlotY += EQUIPMENT_SLOT_SPACING;
         this.addSlot(new ArmorSlot(companionInventory, CompanionEntity.BOOTS_SLOT,
-            equipmentColumnX, equipmentStartY + SLOT_SPACING * 3, ArmorItem.Type.BOOTS));
+            equipmentColumnX, equipmentSlotY, ArmorItem.Type.BOOTS));
+        equipmentSlotY += EQUIPMENT_SLOT_SPACING;
 
-        // Hand slots
-        int handsStartY = HAND_SLOT_START_Y;
-        this.addSlot(new MainHandSlot(companionInventory, CompanionEntity.MAIN_HAND_SLOT, equipmentColumnX, handsStartY));
+        // Hand slots directly continue down the column, matching Sophisticated Backpacks spacing
+        this.addSlot(new MainHandSlot(companionInventory, CompanionEntity.MAIN_HAND_SLOT,
+            equipmentColumnX, equipmentSlotY));
+        equipmentSlotY += EQUIPMENT_SLOT_SPACING;
         this.addSlot(new OffHandSlot(companionInventory, CompanionEntity.OFF_HAND_SLOT,
-            equipmentColumnX, handsStartY + SLOT_SPACING));
+            equipmentColumnX, equipmentSlotY));
 
         // Player inventory (3 rows x 9 columns)
         for (int row = 0; row < 3; row++) {
@@ -130,11 +163,52 @@ public class CompanionMenu extends AbstractContainerMenu {
 
     @Override
     public boolean clickMenuButton(Player player, int buttonId) {
-        if (buttonId == 0 && this.companion != null && this.companion.isOwnedBy(player)) {
-            this.companion.equipBestGear();
-            return true;
+        if (this.companion != null && this.companion.isOwnedBy(player)) {
+            if (buttonId == BUTTON_EQUIP_BEST) {
+                this.companion.equipBestGear();
+                return true;
+            }
+            if (buttonId == BUTTON_TOGGLE_FOLLOW) {
+                this.toggleFollowSetting();
+                return true;
+            }
+            if (buttonId == BUTTON_TOGGLE_AUTO_HEAL) {
+                this.toggleAutoHealSetting();
+                return true;
+            }
+            if (buttonId == BUTTON_TOGGLE_AUTO_EQUIP) {
+                this.toggleAutoEquipSetting();
+                return true;
+            }
         }
         return super.clickMenuButton(player, buttonId);
+    }
+
+    public boolean isFollowingEnabled() {
+        return this.settingsData.get(DATA_FOLLOW_ENABLED) != 0;
+    }
+
+    public boolean isAutoHealEnabled() {
+        return this.settingsData.get(DATA_AUTO_HEAL_ENABLED) != 0;
+    }
+
+    public boolean isAutoEquipEnabled() {
+        return this.settingsData.get(DATA_AUTO_EQUIP_ENABLED) != 0;
+    }
+
+    private void toggleFollowSetting() {
+        int newValue = this.isFollowingEnabled() ? 0 : 1;
+        this.setData(DATA_FOLLOW_ENABLED, newValue);
+    }
+
+    private void toggleAutoHealSetting() {
+        int newValue = this.isAutoHealEnabled() ? 0 : 1;
+        this.setData(DATA_AUTO_HEAL_ENABLED, newValue);
+    }
+
+    private void toggleAutoEquipSetting() {
+        int newValue = this.isAutoEquipEnabled() ? 0 : 1;
+        this.setData(DATA_AUTO_EQUIP_ENABLED, newValue);
     }
 
     private boolean movePlayerItemToCompanion(ItemStack stack) {
@@ -189,6 +263,11 @@ public class CompanionMenu extends AbstractContainerMenu {
         }
 
         @Override
+        public Pair<ResourceLocation, ResourceLocation> getNoItemIcon() {
+            return null;
+        }
+
+        @Override
         public int getMaxStackSize() {
             return 1;
         }
@@ -203,6 +282,11 @@ public class CompanionMenu extends AbstractContainerMenu {
         public boolean mayPlace(ItemStack stack) {
             return isValidMainHandItem(stack);
         }
+
+        @Override
+        public Pair<ResourceLocation, ResourceLocation> getNoItemIcon() {
+            return null;
+        }
     }
 
     private static class OffHandSlot extends Slot {
@@ -216,8 +300,48 @@ public class CompanionMenu extends AbstractContainerMenu {
         }
 
         @Override
+        public Pair<ResourceLocation, ResourceLocation> getNoItemIcon() {
+            return null;
+        }
+
+        @Override
         public int getMaxStackSize() {
             return 1;
+        }
+    }
+
+    private static class CompanionSettingsData implements ContainerData {
+        private final CompanionEntity companion;
+
+        private CompanionSettingsData(CompanionEntity companion) {
+            this.companion = companion;
+        }
+
+        @Override
+        public int get(int index) {
+            return switch (index) {
+                case DATA_FOLLOW_ENABLED -> this.companion.isFollowEnabled() ? 1 : 0;
+                case DATA_AUTO_HEAL_ENABLED -> this.companion.isAutoHealEnabled() ? 1 : 0;
+                case DATA_AUTO_EQUIP_ENABLED -> this.companion.isAutoEquipEnabled() ? 1 : 0;
+                default -> 0;
+            };
+        }
+
+        @Override
+        public void set(int index, int value) {
+            boolean enabled = value != 0;
+            switch (index) {
+                case DATA_FOLLOW_ENABLED -> this.companion.setFollowEnabled(enabled);
+                case DATA_AUTO_HEAL_ENABLED -> this.companion.setAutoHealEnabled(enabled);
+                case DATA_AUTO_EQUIP_ENABLED -> this.companion.setAutoEquipEnabled(enabled);
+                default -> {
+                }
+            }
+        }
+
+        @Override
+        public int getCount() {
+            return SETTINGS_DATA_COUNT;
         }
     }
 }
