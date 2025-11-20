@@ -31,3 +31,6 @@ logs/
 
 # Generated sources
 src/generated/
+# Binary artifacts
+companionmod-1.0.0(refrence_mod).jar
+gradle/wrapper/gradle-wrapper.jar
