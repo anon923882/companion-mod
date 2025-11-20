@@ -30,9 +30,9 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
         super(menu, playerInventory, title);
         this.imageWidth = CompanionMenu.STORAGE_COLUMNS * CompanionGuiTextures.SLOT_SIZE + 14;
         this.imageHeight = BASE_PANEL_HEIGHT + STORAGE_ROWS_PIXEL_HEIGHT;
-        this.titleLabelX = CompanionMenu.STORAGE_START_X;
+        this.titleLabelX = CompanionMenu.STORAGE_START_X + CompanionGuiTextures.UPGRADE_INVENTORY_OFFSET;
         this.titleLabelY = 6;
-        this.inventoryLabelX = CompanionMenu.STORAGE_START_X;
+        this.inventoryLabelX = CompanionMenu.STORAGE_START_X + CompanionGuiTextures.UPGRADE_INVENTORY_OFFSET;
         this.inventoryLabelY = this.imageHeight - 94;
     }
 
@@ -45,8 +45,8 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
     @Override
     protected void init() {
         super.init();
-        int buttonX = this.leftPos + this.imageWidth - CompanionGuiTextures.SLOT_SIZE - 6;
-        int buttonY = this.topPos + 4;
+        int buttonX = this.leftPos + this.imageWidth - CompanionGuiTextures.SLOT_SIZE - 7;
+        int buttonY = this.topPos + 5;
 
         this.settingsButton = new SettingsButton(buttonX, buttonY, button -> this.toggleSettingsPanel());
         this.addRenderableWidget(this.settingsButton);
@@ -78,11 +78,8 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
 
         CompanionGuiHelper.renderEquipmentColumn(guiGraphics, this.leftPos, this.topPos,
             CompanionMenu.EQUIPMENT_SLOT_COUNT);
-        this.renderEquipmentSlotBackgrounds(guiGraphics);
-        CompanionGuiHelper.renderEquipmentIcons(guiGraphics, this.menu,
-            this.leftPos + CompanionMenu.EQUIPMENT_COLUMN_X,
-            this.topPos + CompanionMenu.EQUIPMENT_START_Y,
-            CompanionMenu.EQUIPMENT_SLOT_SPACING, CompanionMenu.EQUIPMENT_SLOT_COUNT);
+        this.renderEquipmentSlotBackgrounds(guiGraphics); // icons not double-rendered
+        // (Removed renderEquipmentIcons from here)
 
         if (this.settingsOpen) {
             this.renderSettingsPanel(guiGraphics);
@@ -259,8 +256,6 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
             }
         }
     }
-
-
 
     private static class SettingsButton extends Button {
         private static final int ICON_U = 16;
