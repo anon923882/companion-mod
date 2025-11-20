@@ -39,6 +39,8 @@ public class CompanionEntity extends PathfinderMob {
         SynchedEntityData.defineId(CompanionEntity.class, EntityDataSerializers.BOOLEAN);
     private static final EntityDataAccessor<Boolean> AUTO_HEAL_ENABLED =
         SynchedEntityData.defineId(CompanionEntity.class, EntityDataSerializers.BOOLEAN);
+    private static final EntityDataAccessor<Boolean> AUTO_EQUIP_ENABLED =
+        SynchedEntityData.defineId(CompanionEntity.class, EntityDataSerializers.BOOLEAN);
     
     public static final int STORAGE_SIZE = 27;
     public static final int MAIN_HAND_SLOT = STORAGE_SIZE;
@@ -74,6 +76,7 @@ public class CompanionEntity extends PathfinderMob {
         builder.define(OWNER_UUID, "");
         builder.define(FOLLOWING_ENABLED, true);
         builder.define(AUTO_HEAL_ENABLED, true);
+        builder.define(AUTO_EQUIP_ENABLED, true);
     }
 
     @Override
@@ -138,6 +141,14 @@ public class CompanionEntity extends PathfinderMob {
         this.entityData.set(AUTO_HEAL_ENABLED, enabled);
     }
 
+    public boolean isAutoEquipEnabled() {
+        return this.entityData.get(AUTO_EQUIP_ENABLED);
+    }
+
+    public void setAutoEquipEnabled(boolean enabled) {
+        this.entityData.set(AUTO_EQUIP_ENABLED, enabled);
+    }
+
     @Override
     public void tick() {
         super.tick();
@@ -161,6 +172,7 @@ public class CompanionEntity extends PathfinderMob {
         tag.put("Inventory", this.inventory.createTag(this.registryAccess()));
         tag.putBoolean("FollowEnabled", this.isFollowEnabled());
         tag.putBoolean("AutoHealEnabled", this.isAutoHealEnabled());
+        tag.putBoolean("AutoEquipEnabled", this.isAutoEquipEnabled());
     }
 
     @Override
@@ -178,6 +190,9 @@ public class CompanionEntity extends PathfinderMob {
         }
         if (tag.contains("AutoHealEnabled")) {
             this.setAutoHealEnabled(tag.getBoolean("AutoHealEnabled"));
+        }
+        if (tag.contains("AutoEquipEnabled")) {
+            this.setAutoEquipEnabled(tag.getBoolean("AutoEquipEnabled"));
         }
     }
 
@@ -252,13 +267,10 @@ public class CompanionEntity extends PathfinderMob {
         if (this.level().isClientSide || this.suppressInventoryUpdates) {
             return;
         }
-        this.suppressInventoryUpdates = true;
-        try {
-            this.fillEmptyEquipmentSlots();
+        this.runWithInventorySilenced(() -> {
+            this.applyBestGear(this.isAutoEquipEnabled());
             this.syncEquipmentFromInventory();
-        } finally {
-            this.suppressInventoryUpdates = false;
-        }
+        });
     }
 
     public void equipBestGear() {
@@ -266,15 +278,9 @@ public class CompanionEntity extends PathfinderMob {
             return;
         }
         this.runWithInventorySilenced(() -> {
-            this.equipBestWeapon(true);
-            this.equipShield(true);
-            this.equipBestArmor(ArmorItem.Type.BOOTS, BOOTS_SLOT, true);
-            this.equipBestArmor(ArmorItem.Type.LEGGINGS, LEGS_SLOT, true);
-            this.equipBestArmor(ArmorItem.Type.CHESTPLATE, CHEST_SLOT, true);
-            this.equipBestArmor(ArmorItem.Type.HELMET, HELMET_SLOT, true);
+            this.applyBestGear(true);
             this.syncEquipmentFromInventory();
         });
-        this.onInventoryChanged();
     }
 
     private void fillEmptyEquipmentSlots() {
@@ -284,6 +290,19 @@ public class CompanionEntity extends PathfinderMob {
         this.equipBestArmor(ArmorItem.Type.LEGGINGS, LEGS_SLOT, false);
         this.equipBestArmor(ArmorItem.Type.CHESTPLATE, CHEST_SLOT, false);
         this.equipBestArmor(ArmorItem.Type.HELMET, HELMET_SLOT, false);
+    }
+
+    private void applyBestGear(boolean allowReplacement) {
+        if (allowReplacement) {
+            this.equipBestWeapon(true);
+            this.equipShield(true);
+            this.equipBestArmor(ArmorItem.Type.BOOTS, BOOTS_SLOT, true);
+            this.equipBestArmor(ArmorItem.Type.LEGGINGS, LEGS_SLOT, true);
+            this.equipBestArmor(ArmorItem.Type.CHESTPLATE, CHEST_SLOT, true);
+            this.equipBestArmor(ArmorItem.Type.HELMET, HELMET_SLOT, true);
+        } else {
+            this.fillEmptyEquipmentSlots();
+        }
     }
 
     private void equipBestWeapon(boolean allowReplacement) {

@@ -25,6 +25,9 @@ public final class CompanionGuiTextures {
     public static final ResourceLocation SLOTS_BACKGROUND = ResourceLocation.fromNamespaceAndPath(
         COMPANION_MOD,
         "textures/gui/slots_background.png");
+    public static final ResourceLocation ICONS = ResourceLocation.fromNamespaceAndPath(
+        COMPANION_MOD,
+        "textures/gui/icons.png");
 
     private CompanionGuiTextures() {}
 }

@@ -7,26 +7,23 @@ import net.minecraft.world.item.ItemStack;
 
 final class EquipmentColumnRenderer {
     private static final int COLUMN_WIDTH = 26;
+    private static final int MIDDLE_WIDTH = 25;
+    private static final int COLUMN_TOP_HEIGHT = 4;
 
     private EquipmentColumnRenderer() {}
 
     static void render(GuiGraphics guiGraphics, int leftPos, int topPos, int slots) {
         int columnX = leftPos - CompanionGuiTextures.UPGRADE_INVENTORY_OFFSET;
-        int columnBodyHeight = slots * CompanionGuiTextures.UPGRADE_SLOT_HEIGHT;
-        int middleY = topPos + CompanionGuiTextures.UPGRADE_TOP_HEIGHT;
-        int bottomY = middleY + columnBodyHeight;
+        int heightWithoutBottom = slots * CompanionGuiTextures.UPGRADE_SLOT_HEIGHT
+            + CompanionGuiTextures.UPGRADE_BOTTOM_HEIGHT;
+        int bottomY = topPos + heightWithoutBottom;
 
-        // Draw the stitched upgrade column exactly like Sophisticated Backpacks: a fixed-height
-        // cap, a repeated middle section aligned to 16px slot spacing, and a fixed bottom cap.
         guiGraphics.blit(CompanionGuiTextures.GUI_CONTROLS, columnX, topPos, 0, 0,
-            COLUMN_WIDTH, CompanionGuiTextures.UPGRADE_TOP_HEIGHT, 256, 256);
-        if (columnBodyHeight > 0) {
-            guiGraphics.blit(CompanionGuiTextures.GUI_CONTROLS, columnX, middleY, 0,
-                CompanionGuiTextures.UPGRADE_TOP_HEIGHT, COLUMN_WIDTH,
-                columnBodyHeight, 256, 256);
-        }
+            COLUMN_WIDTH, COLUMN_TOP_HEIGHT, 256, 256);
+        guiGraphics.blit(CompanionGuiTextures.GUI_CONTROLS, columnX, topPos + COLUMN_TOP_HEIGHT, 0, COLUMN_TOP_HEIGHT,
+            MIDDLE_WIDTH, heightWithoutBottom - COLUMN_TOP_HEIGHT, 256, 256);
         guiGraphics.blit(CompanionGuiTextures.GUI_CONTROLS, columnX, bottomY, 0, 198,
-            COLUMN_WIDTH, CompanionGuiTextures.UPGRADE_BOTTOM_HEIGHT, 256, 256);
+            MIDDLE_WIDTH, CompanionGuiTextures.UPGRADE_BOTTOM_HEIGHT, 256, 256);
     }
 
     static void renderIcons(GuiGraphics guiGraphics, CompanionMenu menu, int slotX, int slotY, int slotSpacing, int slots) {

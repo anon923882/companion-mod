@@ -55,7 +55,8 @@ sourceSets.main.resources {
 def sophisticatedCoreTextures = [
         'storage_background_9.png': 'https://raw.githubusercontent.com/P3pp3rF1y/SophisticatedCore/1.20.4/src/main/resources/assets/sophisticatedcore/textures/gui/storage_background_9.png',
         'gui_controls.png'        : 'https://raw.githubusercontent.com/P3pp3rF1y/SophisticatedCore/1.20.4/src/main/resources/assets/sophisticatedcore/textures/gui/gui_controls.png',
-        'slots_background.png'    : 'https://raw.githubusercontent.com/P3pp3rF1y/SophisticatedCore/1.20.4/src/main/resources/assets/sophisticatedcore/textures/gui/slots_background.png'
+        'slots_background.png'    : 'https://raw.githubusercontent.com/P3pp3rF1y/SophisticatedCore/1.20.4/src/main/resources/assets/sophisticatedcore/textures/gui/slots_background.png',
+        'icons.png'               : 'https://raw.githubusercontent.com/P3pp3rF1y/SophisticatedCore/1.20.4/src/main/resources/assets/sophisticatedcore/textures/gui/icons.png'
 ]
 
 tasks.register('fetchSophisticatedTextures') {

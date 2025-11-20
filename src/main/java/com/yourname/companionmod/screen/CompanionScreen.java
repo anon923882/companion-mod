@@ -17,12 +17,14 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
     private static final int BASE_PANEL_HEIGHT = 114;
     private static final int SETTINGS_PANEL_SLOT_COLUMNS = 3;
     private static final int SETTINGS_PANEL_WIDTH = CompanionGuiTextures.SLOT_SIZE * SETTINGS_PANEL_SLOT_COLUMNS + 14;
-    private static final int SETTINGS_PANEL_HEIGHT = 80;
+    private static final int SETTINGS_PANEL_HEIGHT = 104;
     private static final Component FOLLOW_SETTING_LABEL = Component.translatable("gui.companionmod.settings.follow");
     private static final Component AUTO_HEAL_SETTING_LABEL = Component.translatable("gui.companionmod.settings.auto_heal");
+    private static final Component AUTO_EQUIP_SETTING_LABEL = Component.translatable("gui.companionmod.settings.auto_equip");
     private static final Component SETTINGS_TITLE = Component.translatable("gui.companionmod.settings.title");
     private static final ItemStack FOLLOW_ICON = new ItemStack(Items.LEAD);
     private static final ItemStack HEAL_ICON = new ItemStack(Items.GOLDEN_APPLE);
+    private static final ItemStack AUTO_EQUIP_ICON = new ItemStack(Items.DIAMOND_SWORD);
 
     public CompanionScreen(CompanionMenu menu, Inventory playerInventory, Component title) {
         super(menu, playerInventory, title);
@@ -38,34 +40,26 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
     private Button settingsButton;
     private SlotToggleButton followToggle;
     private SlotToggleButton autoHealToggle;
+    private SlotToggleButton autoEquipToggle;
 
     @Override
     protected void init() {
         super.init();
-        int buttonWidth = 90;
-        int buttonX = this.leftPos + this.imageWidth - buttonWidth - 10;
+        int buttonX = this.leftPos + this.imageWidth - CompanionGuiTextures.SLOT_SIZE - 6;
         int buttonY = this.topPos + 4;
 
-        this.addRenderableWidget(Button.builder(
-            Component.translatable("gui.companionmod.equip_best"),
-            button -> this.sendMenuButtonRequest(CompanionMenu.BUTTON_EQUIP_BEST))
-            .bounds(buttonX, buttonY, buttonWidth, 20)
-            .build());
-
-        int settingsWidth = 70;
-        this.settingsButton = Button.builder(
-            Component.translatable("gui.companionmod.settings"),
-            button -> this.toggleSettingsPanel())
-            .bounds(buttonX - settingsWidth - 4, buttonY, settingsWidth, 20)
-            .build();
+        this.settingsButton = new SettingsButton(buttonX, buttonY, button -> this.toggleSettingsPanel());
         this.addRenderableWidget(this.settingsButton);
 
         this.followToggle = new SlotToggleButton(Component.literal(""), FOLLOW_ICON,
             button -> this.sendMenuButtonRequest(CompanionMenu.BUTTON_TOGGLE_FOLLOW));
         this.autoHealToggle = new SlotToggleButton(Component.literal(""), HEAL_ICON,
             button -> this.sendMenuButtonRequest(CompanionMenu.BUTTON_TOGGLE_AUTO_HEAL));
+        this.autoEquipToggle = new SlotToggleButton(Component.literal(""), AUTO_EQUIP_ICON,
+            button -> this.sendMenuButtonRequest(CompanionMenu.BUTTON_TOGGLE_AUTO_EQUIP));
         this.addRenderableWidget(this.followToggle);
         this.addRenderableWidget(this.autoHealToggle);
+        this.addRenderableWidget(this.autoEquipToggle);
         this.updateSettingsWidgets();
     }
 
@@ -74,7 +68,10 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
         int x = this.leftPos;
         int y = this.topPos;
 
-        CompanionGuiHelper.renderStorageBackground(guiGraphics, x, y, this.imageWidth, STORAGE_ROWS_PIXEL_HEIGHT);
+        int backgroundX = x - CompanionGuiTextures.UPGRADE_INVENTORY_OFFSET;
+        int backgroundWidth = this.imageWidth + CompanionGuiTextures.UPGRADE_INVENTORY_OFFSET;
+
+        CompanionGuiHelper.renderStorageBackground(guiGraphics, backgroundX, y, backgroundWidth, STORAGE_ROWS_PIXEL_HEIGHT);
 
         CompanionGuiHelper.renderSlotArea(guiGraphics, x + CompanionGuiTextures.STORAGE_X_OFFSET,
             y + CompanionGuiTextures.STORAGE_Y_OFFSET, CompanionMenu.STORAGE_COLUMNS, CompanionMenu.STORAGE_ROWS);
@@ -118,7 +115,7 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
     }
 
     private void updateSettingsWidgets() {
-        if (this.followToggle == null || this.autoHealToggle == null) {
+        if (this.followToggle == null || this.autoHealToggle == null || this.autoEquipToggle == null) {
             return;
         }
         boolean visible = this.settingsOpen;
@@ -126,16 +123,23 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
         this.followToggle.active = visible;
         this.autoHealToggle.visible = visible;
         this.autoHealToggle.active = visible;
+        if (this.autoEquipToggle != null) {
+            this.autoEquipToggle.visible = visible;
+            this.autoEquipToggle.active = visible;
+        }
         this.placeSettingsButtons();
         this.updateSettingLabels();
     }
 
     private void updateSettingLabels() {
-        if (this.followToggle == null || this.autoHealToggle == null) {
+        if (this.followToggle == null || this.autoHealToggle == null || this.autoEquipToggle == null) {
             return;
         }
         this.updateToggleLabel(this.followToggle, this.menu.isFollowingEnabled());
         this.updateToggleLabel(this.autoHealToggle, this.menu.isAutoHealEnabled());
+        if (this.autoEquipToggle != null) {
+            this.updateToggleLabel(this.autoEquipToggle, this.menu.isAutoEquipEnabled());
+        }
     }
 
     private void updateToggleLabel(SlotToggleButton button, boolean value) {
@@ -146,7 +150,7 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
     }
 
     private void placeSettingsButtons() {
-        if (this.followToggle == null || this.autoHealToggle == null) {
+        if (this.followToggle == null || this.autoHealToggle == null || this.autoEquipToggle == null) {
             return;
         }
         int toggleX = this.getSettingsPanelX() + CompanionGuiTextures.STORAGE_X_OFFSET;
@@ -159,6 +163,12 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
         this.autoHealToggle.setY(followY + CompanionGuiTextures.SLOT_SIZE + 4);
         this.autoHealToggle.setWidth(CompanionGuiTextures.SLOT_SIZE);
         this.autoHealToggle.setHeight(CompanionGuiTextures.SLOT_SIZE);
+        if (this.autoEquipToggle != null) {
+            this.autoEquipToggle.setX(toggleX);
+            this.autoEquipToggle.setY(this.autoHealToggle.getY() + CompanionGuiTextures.SLOT_SIZE + 4);
+            this.autoEquipToggle.setWidth(CompanionGuiTextures.SLOT_SIZE);
+            this.autoEquipToggle.setHeight(CompanionGuiTextures.SLOT_SIZE);
+        }
     }
 
     private int getSettingsPanelX() {
@@ -179,6 +189,9 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
             int labelX = this.followToggle.getX() + CompanionGuiTextures.SLOT_SIZE + 6;
             guiGraphics.drawString(this.font, FOLLOW_SETTING_LABEL, labelX, this.followToggle.getY() + 5, 0x3F3F3F, false);
             guiGraphics.drawString(this.font, AUTO_HEAL_SETTING_LABEL, labelX, this.autoHealToggle.getY() + 5, 0x3F3F3F, false);
+            if (this.autoEquipToggle != null) {
+                guiGraphics.drawString(this.font, AUTO_EQUIP_SETTING_LABEL, labelX, this.autoEquipToggle.getY() + 5, 0x3F3F3F, false);
+            }
         }
     }
 
@@ -187,9 +200,12 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
             return;
         }
         CompanionGuiHelper.renderSlotArea(guiGraphics, this.followToggle.getX(), this.followToggle.getY(),
-            SETTINGS_PANEL_SLOT_COLUMNS, 2);
+            SETTINGS_PANEL_SLOT_COLUMNS, 3);
         CompanionGuiHelper.renderSingleSlot(guiGraphics, this.followToggle.getX(), this.followToggle.getY());
         CompanionGuiHelper.renderSingleSlot(guiGraphics, this.autoHealToggle.getX(), this.autoHealToggle.getY());
+        if (this.autoEquipToggle != null) {
+            CompanionGuiHelper.renderSingleSlot(guiGraphics, this.autoEquipToggle.getX(), this.autoEquipToggle.getY());
+        }
     }
 
     private void renderEquipmentSlotBackgrounds(GuiGraphics guiGraphics) {
@@ -211,6 +227,9 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
         }
         if (this.autoHealToggle != null && this.autoHealToggle.isHoveredOrFocused()) {
             guiGraphics.renderTooltip(this.font, this.getSettingTooltip(AUTO_HEAL_SETTING_LABEL, this.autoHealToggle), mouseX, mouseY);
+        }
+        if (this.autoEquipToggle != null && this.autoEquipToggle.isHoveredOrFocused()) {
+            guiGraphics.renderTooltip(this.font, this.getSettingTooltip(AUTO_EQUIP_SETTING_LABEL, this.autoEquipToggle), mouseX, mouseY);
         }
     }
 
@@ -241,4 +260,24 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
         }
     }
 
+
+
+    private static class SettingsButton extends Button {
+        private static final int ICON_U = 16;
+        private static final int ICON_V = 96;
+
+        protected SettingsButton(int x, int y, OnPress onPress) {
+            super(x, y, CompanionGuiTextures.SLOT_SIZE, CompanionGuiTextures.SLOT_SIZE, Component.literal(""), onPress,
+                DEFAULT_NARRATION);
+        }
+
+        @Override
+        public void renderWidget(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+            int u = this.isHoveredOrFocused() ? 47 : 29;
+            guiGraphics.blit(CompanionGuiTextures.GUI_CONTROLS, this.getX(), this.getY(), u, 0,
+                CompanionGuiTextures.SLOT_SIZE, CompanionGuiTextures.SLOT_SIZE, 256, 256);
+            guiGraphics.blit(CompanionGuiTextures.ICONS, this.getX() + 1, this.getY() + 1, ICON_U, ICON_V,
+                16, 16, 256, 256);
+        }
+    }
 }

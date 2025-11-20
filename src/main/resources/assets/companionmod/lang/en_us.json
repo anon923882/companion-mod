@@ -6,6 +6,7 @@
   "gui.companionmod.settings.title": "Companion Settings",
   "gui.companionmod.settings.follow": "Follow Owner",
   "gui.companionmod.settings.auto_heal": "Auto-Heal",
+  "gui.companionmod.settings.auto_equip": "Auto-Equip Best",
   "gui.companionmod.toggle.on": "On",
   "gui.companionmod.toggle.off": "Off"
 }

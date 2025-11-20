@@ -33,9 +33,11 @@ public class CompanionMenu extends AbstractContainerMenu {
     public static final int BUTTON_EQUIP_BEST = 0;
     public static final int BUTTON_TOGGLE_FOLLOW = 1;
     public static final int BUTTON_TOGGLE_AUTO_HEAL = 2;
+    public static final int BUTTON_TOGGLE_AUTO_EQUIP = 3;
     private static final int DATA_FOLLOW_ENABLED = 0;
     private static final int DATA_AUTO_HEAL_ENABLED = 1;
-    private static final int SETTINGS_DATA_COUNT = 2;
+    private static final int DATA_AUTO_EQUIP_ENABLED = 2;
+    private static final int SETTINGS_DATA_COUNT = 3;
 
     private final Container companionInventory;
     private final CompanionEntity companion;
@@ -174,6 +176,10 @@ public class CompanionMenu extends AbstractContainerMenu {
                 this.toggleAutoHealSetting();
                 return true;
             }
+            if (buttonId == BUTTON_TOGGLE_AUTO_EQUIP) {
+                this.toggleAutoEquipSetting();
+                return true;
+            }
         }
         return super.clickMenuButton(player, buttonId);
     }
@@ -186,6 +192,10 @@ public class CompanionMenu extends AbstractContainerMenu {
         return this.settingsData.get(DATA_AUTO_HEAL_ENABLED) != 0;
     }
 
+    public boolean isAutoEquipEnabled() {
+        return this.settingsData.get(DATA_AUTO_EQUIP_ENABLED) != 0;
+    }
+
     private void toggleFollowSetting() {
         int newValue = this.isFollowingEnabled() ? 0 : 1;
         this.setData(DATA_FOLLOW_ENABLED, newValue);
@@ -194,6 +204,11 @@ public class CompanionMenu extends AbstractContainerMenu {
     private void toggleAutoHealSetting() {
         int newValue = this.isAutoHealEnabled() ? 0 : 1;
         this.setData(DATA_AUTO_HEAL_ENABLED, newValue);
+    }
+
+    private void toggleAutoEquipSetting() {
+        int newValue = this.isAutoEquipEnabled() ? 0 : 1;
+        this.setData(DATA_AUTO_EQUIP_ENABLED, newValue);
     }
 
     private boolean movePlayerItemToCompanion(ItemStack stack) {
@@ -307,6 +322,7 @@ public class CompanionMenu extends AbstractContainerMenu {
             return switch (index) {
                 case DATA_FOLLOW_ENABLED -> this.companion.isFollowEnabled() ? 1 : 0;
                 case DATA_AUTO_HEAL_ENABLED -> this.companion.isAutoHealEnabled() ? 1 : 0;
+                case DATA_AUTO_EQUIP_ENABLED -> this.companion.isAutoEquipEnabled() ? 1 : 0;
                 default -> 0;
             };
         }
@@ -317,6 +333,7 @@ public class CompanionMenu extends AbstractContainerMenu {
             switch (index) {
                 case DATA_FOLLOW_ENABLED -> this.companion.setFollowEnabled(enabled);
                 case DATA_AUTO_HEAL_ENABLED -> this.companion.setAutoHealEnabled(enabled);
+                case DATA_AUTO_EQUIP_ENABLED -> this.companion.setAutoEquipEnabled(enabled);
                 default -> {
                 }
             }
