@@ -1,0 +1,33 @@
+# Gradle
+.gradle/
+build/
+out/
+classes/
+
+# Eclipse
+*.launch
+.settings/
+.metadata/
+.classpath
+.project
+eclipse/
+bin/
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Visual Studio Code
+.vscode/
+
+# macOS
+.DS_Store
+
+# Minecraft
+run/
+logs/
+
+# Generated sources
+src/generated/
