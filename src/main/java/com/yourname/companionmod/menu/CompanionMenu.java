@@ -7,8 +7,6 @@ import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
-import net.minecraft.world.inventory.ContainerData;
-import net.minecraft.world.inventory.SimpleContainerData;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ArmorItem;
 import net.minecraft.world.item.ItemStack;
@@ -17,107 +15,79 @@ import net.minecraft.world.item.SwordItem;
 import net.minecraft.world.item.TieredItem;
 
 public class CompanionMenu extends AbstractContainerMenu {
-    public static final int DATA_SIZE = 4;
+    // Vanilla survival inventory positions (matching pixel-perfect)
+    public static final int ARMOR_SLOT_X = 8;
+    public static final int ARMOR_START_Y = 8;
     public static final int SLOT_SPACING = 18;
+    public static final int OFF_HAND_X = 77;
+    public static final int OFF_HAND_Y = 62;
+    public static final int MAIN_HAND_X = 98;
+    public static final int MAIN_HAND_Y = 18;
+    
+    // Companion storage (3x9 grid, no hotbar)
     public static final int STORAGE_COLUMNS = 9;
     public static final int STORAGE_ROWS = 3;
     public static final int STORAGE_START_X = 8;
-    public static final int COMPANION_STORAGE_START_Y = 84;
-    public static final int COMPANION_HOTBAR_Y = 142;
-    public static final int PLAYER_SECTION_OFFSET_Y = 166;
-    public static final int PLAYER_INVENTORY_START_Y = PLAYER_SECTION_OFFSET_Y + 18;
-    public static final int PLAYER_HOTBAR_Y = PLAYER_INVENTORY_START_Y + 58;
-    public static final int ARMOR_COLUMN_X = 8;
-    public static final int ARMOR_START_Y = 8;
-    public static final int MAIN_HAND_SLOT_X = 98;
-    public static final int MAIN_HAND_SLOT_Y = 18;
-    public static final int OFF_HAND_SLOT_X = 77;
-    public static final int OFF_HAND_SLOT_Y = 62;
-    public static final int BUTTON_TOGGLE_XP = 1;
-    public static final int BUTTON_TOGGLE_PASSIVE = 2;
-    public static final int BUTTON_TOGGLE_HOSTILE = 3;
-    public static final int BUTTON_TOGGLE_AUTO_EQUIP = 4;
-    private static final int FLAG_XP = 0x1;
-    private static final int FLAG_PASSIVE = 0x2;
-    private static final int FLAG_HOSTILE = 0x4;
-    private static final int FLAG_AUTO_EQUIP = 0x8;
-
+    public static final int STORAGE_START_Y = 84;
+    
+    // Player inventory (matching chest-style layout)
+    public static final int PLAYER_INV_START_X = 8;
+    public static final int PLAYER_INV_START_Y = 84;
+    
     private final Container companionInventory;
     private final CompanionEntity companion;
-    private final ContainerData dataAccess;
 
     // Client constructor
     public CompanionMenu(int containerId, Inventory playerInventory) {
-        this(containerId, playerInventory, new SimpleContainer(CompanionEntity.TOTAL_SLOTS),
-            new SimpleContainerData(DATA_SIZE), null);
+        this(containerId, playerInventory, new SimpleContainer(CompanionEntity.TOTAL_SLOTS), null);
     }
 
     // Server constructor
     public CompanionMenu(int containerId, Inventory playerInventory, Container companionInventory,
             CompanionEntity companion) {
-        this(containerId, playerInventory, companionInventory,
-            companion != null ? new CompanionData(companion) : new SimpleContainerData(DATA_SIZE), companion);
-    }
-
-    private CompanionMenu(int containerId, Inventory playerInventory, Container companionInventory,
-            ContainerData dataAccess, CompanionEntity companion) {
         super(ModMenuTypes.COMPANION_MENU.get(), containerId);
         checkContainerSize(companionInventory, CompanionEntity.TOTAL_SLOTS);
         this.companionInventory = companionInventory;
         this.companion = companion;
-        this.dataAccess = dataAccess;
 
         companionInventory.startOpen(playerInventory.player);
-        this.addDataSlots(this.dataAccess);
 
-        // Companion storage inventory (3 rows x 9 columns)
+        // Companion armor slots (left side, matching vanilla player armor)
+        this.addSlot(new ArmorSlot(companionInventory, CompanionEntity.HELMET_SLOT,
+            ARMOR_SLOT_X, ARMOR_START_Y, ArmorItem.Type.HELMET));
+        this.addSlot(new ArmorSlot(companionInventory, CompanionEntity.CHEST_SLOT,
+            ARMOR_SLOT_X, ARMOR_START_Y + SLOT_SPACING, ArmorItem.Type.CHESTPLATE));
+        this.addSlot(new ArmorSlot(companionInventory, CompanionEntity.LEGS_SLOT,
+            ARMOR_SLOT_X, ARMOR_START_Y + SLOT_SPACING * 2, ArmorItem.Type.LEGGINGS));
+        this.addSlot(new ArmorSlot(companionInventory, CompanionEntity.BOOTS_SLOT,
+            ARMOR_SLOT_X, ARMOR_START_Y + SLOT_SPACING * 3, ArmorItem.Type.BOOTS));
+
+        // Companion hand slots
+        this.addSlot(new MainHandSlot(companionInventory, CompanionEntity.MAIN_HAND_SLOT,
+            MAIN_HAND_X, MAIN_HAND_Y));
+        this.addSlot(new OffHandSlot(companionInventory, CompanionEntity.OFF_HAND_SLOT,
+            OFF_HAND_X, OFF_HAND_Y));
+
+        // Companion storage inventory (3 rows x 9 columns, NO hotbar)
         for (int row = 0; row < STORAGE_ROWS; row++) {
             for (int col = 0; col < STORAGE_COLUMNS; col++) {
                 int index = col + row * STORAGE_COLUMNS;
                 this.addSlot(new Slot(companionInventory, index,
                     STORAGE_START_X + col * SLOT_SPACING,
-                    COMPANION_STORAGE_START_Y + row * SLOT_SPACING));
+                    STORAGE_START_Y + row * SLOT_SPACING));
             }
         }
 
-        // Companion hotbar (final row)
-        int hotbarStart = CompanionEntity.STORAGE_SIZE - STORAGE_COLUMNS;
-        for (int col = 0; col < STORAGE_COLUMNS; col++) {
-            int index = hotbarStart + col;
-            this.addSlot(new Slot(companionInventory, index,
-                STORAGE_START_X + col * SLOT_SPACING, COMPANION_HOTBAR_Y));
-        }
-
-        // Equipment slots (separate from storage grid)
-        this.addSlot(new ArmorSlot(companionInventory, CompanionEntity.HELMET_SLOT,
-            ARMOR_COLUMN_X, ARMOR_START_Y, ArmorItem.Type.HELMET));
-        this.addSlot(new ArmorSlot(companionInventory, CompanionEntity.CHEST_SLOT,
-            ARMOR_COLUMN_X, ARMOR_START_Y + SLOT_SPACING, ArmorItem.Type.CHESTPLATE));
-        this.addSlot(new ArmorSlot(companionInventory, CompanionEntity.LEGS_SLOT,
-            ARMOR_COLUMN_X, ARMOR_START_Y + SLOT_SPACING * 2, ArmorItem.Type.LEGGINGS));
-        this.addSlot(new ArmorSlot(companionInventory, CompanionEntity.BOOTS_SLOT,
-            ARMOR_COLUMN_X, ARMOR_START_Y + SLOT_SPACING * 3, ArmorItem.Type.BOOTS));
-
-        // Hand slots
-        this.addSlot(new MainHandSlot(companionInventory, CompanionEntity.MAIN_HAND_SLOT,
-            MAIN_HAND_SLOT_X, MAIN_HAND_SLOT_Y));
-        this.addSlot(new OffHandSlot(companionInventory, CompanionEntity.OFF_HAND_SLOT,
-            OFF_HAND_SLOT_X, OFF_HAND_SLOT_Y));
-
-        // Player inventory (3 rows x 9 columns)
+        // Player inventory (3 rows x 9 columns, matching chest layout)
         for (int row = 0; row < 3; row++) {
             for (int col = 0; col < 9; col++) {
                 this.addSlot(new Slot(playerInventory, col + row * 9 + 9,
-                    STORAGE_START_X + col * SLOT_SPACING,
-                    PLAYER_INVENTORY_START_Y + row * SLOT_SPACING));
+                    PLAYER_INV_START_X + col * SLOT_SPACING,
+                    PLAYER_INV_START_Y + row * SLOT_SPACING));
             }
         }
 
-        // Player hotbar (9 columns)
-        for (int col = 0; col < 9; col++) {
-            this.addSlot(new Slot(playerInventory, col,
-                STORAGE_START_X + col * SLOT_SPACING, PLAYER_HOTBAR_Y));
-        }
+        // NO PLAYER HOTBAR - removed as requested
     }
 
     @Override
@@ -129,11 +99,16 @@ public class CompanionMenu extends AbstractContainerMenu {
             ItemStack slotStack = slot.getItem();
             itemstack = slotStack.copy();
 
-            if (index < CompanionEntity.TOTAL_SLOTS) {
-                if (!this.moveItemStackTo(slotStack, CompanionEntity.TOTAL_SLOTS, this.slots.size(), true)) {
+            // Companion slots are first
+            int companionSlotCount = 6 + (STORAGE_ROWS * STORAGE_COLUMNS);
+            
+            if (index < companionSlotCount) {
+                // Moving from companion to player inventory
+                if (!this.moveItemStackTo(slotStack, companionSlotCount, this.slots.size(), true)) {
                     return ItemStack.EMPTY;
                 }
             } else {
+                // Moving from player inventory to companion
                 if (!this.movePlayerItemToCompanion(slotStack)) {
                     return ItemStack.EMPTY;
                 }
@@ -160,62 +135,8 @@ public class CompanionMenu extends AbstractContainerMenu {
         this.companionInventory.stopOpen(player);
     }
 
-    @Override
-    public boolean clickMenuButton(Player player, int buttonId) {
-        if (this.companion != null && this.companion.isOwnedBy(player)) {
-            return switch (buttonId) {
-                case BUTTON_TOGGLE_XP -> {
-                    this.companion.toggleExperiencePickup();
-                    yield true;
-                }
-                case BUTTON_TOGGLE_PASSIVE -> {
-                    this.companion.togglePassiveHunting();
-                    yield true;
-                }
-                case BUTTON_TOGGLE_HOSTILE -> {
-                    this.companion.toggleHostileHunting();
-                    yield true;
-                }
-                case BUTTON_TOGGLE_AUTO_EQUIP -> {
-                    this.companion.toggleAutoEquip();
-                    yield true;
-                }
-                default -> super.clickMenuButton(player, buttonId);
-            };
-        }
-        return super.clickMenuButton(player, buttonId);
-    }
-
-    public int getDisplayedLevel() {
-        return this.dataAccess.get(0);
-    }
-
-    public int getDisplayedExperience() {
-        return this.dataAccess.get(1);
-    }
-
-    public int getDisplayedExperienceToNext() {
-        return this.dataAccess.get(2);
-    }
-
-    private int getBehaviorFlags() {
-        return this.dataAccess.get(3);
-    }
-
-    public boolean isExperiencePickupEnabled() {
-        return (this.getBehaviorFlags() & FLAG_XP) != 0;
-    }
-
-    public boolean isPassiveHuntEnabled() {
-        return (this.getBehaviorFlags() & FLAG_PASSIVE) != 0;
-    }
-
-    public boolean isHostileHuntEnabled() {
-        return (this.getBehaviorFlags() & FLAG_HOSTILE) != 0;
-    }
-
-    public boolean isAutoEquipEnabled() {
-        return (this.getBehaviorFlags() & FLAG_AUTO_EQUIP) != 0;
+    public CompanionEntity getCompanion() {
+        return this.companion;
     }
 
     private boolean movePlayerItemToCompanion(ItemStack stack) {
@@ -227,18 +148,21 @@ public class CompanionMenu extends AbstractContainerMenu {
         }
 
         if (isValidMainHandItem(stack)) {
-            if (this.moveItemStackTo(stack, CompanionEntity.MAIN_HAND_SLOT, CompanionEntity.MAIN_HAND_SLOT + 1, false)) {
+            int mainHandIndex = 5; // Main hand is 6th slot (0-indexed)
+            if (this.moveItemStackTo(stack, mainHandIndex, mainHandIndex + 1, false)) {
                 return true;
             }
         }
 
         if (stack.getItem() instanceof ShieldItem) {
-            if (this.moveItemStackTo(stack, CompanionEntity.OFF_HAND_SLOT, CompanionEntity.OFF_HAND_SLOT + 1, false)) {
+            int offHandIndex = 4; // Off hand is 5th slot (0-indexed)
+            if (this.moveItemStackTo(stack, offHandIndex, offHandIndex + 1, false)) {
                 return true;
             }
         }
 
-        return this.moveItemStackTo(stack, 0, CompanionEntity.STORAGE_SIZE, false);
+        // Try to move to companion storage
+        return this.moveItemStackTo(stack, 6, 6 + (STORAGE_ROWS * STORAGE_COLUMNS), false);
     }
 
     private static boolean isValidMainHandItem(ItemStack stack) {
@@ -248,10 +172,10 @@ public class CompanionMenu extends AbstractContainerMenu {
 
     private static int getSlotIndexForArmor(ArmorItem.Type type) {
         return switch (type) {
-            case HELMET -> CompanionEntity.HELMET_SLOT;
-            case CHESTPLATE -> CompanionEntity.CHEST_SLOT;
-            case LEGGINGS -> CompanionEntity.LEGS_SLOT;
-            case BOOTS -> CompanionEntity.BOOTS_SLOT;
+            case HELMET -> 0;
+            case CHESTPLATE -> 1;
+            case LEGGINGS -> 2;
+            case BOOTS -> 3;
             default -> throw new IllegalStateException("Unexpected armor slot: " + type);
         };
     }
@@ -299,52 +223,6 @@ public class CompanionMenu extends AbstractContainerMenu {
         @Override
         public int getMaxStackSize() {
             return 1;
-        }
-    }
-
-    private static class CompanionData implements ContainerData {
-        private final CompanionEntity companion;
-
-        public CompanionData(CompanionEntity companion) {
-            this.companion = companion;
-        }
-
-        @Override
-        public int get(int index) {
-            return switch (index) {
-                case 0 -> this.companion.getCompanionLevel();
-                case 1 -> this.companion.getExperience();
-                case 2 -> this.companion.getExperienceToNextLevel();
-                case 3 -> this.encodeFlags();
-                default -> 0;
-            };
-        }
-
-        private int encodeFlags() {
-            int flags = 0;
-            if (this.companion.isExperiencePickupEnabled()) {
-                flags |= CompanionMenu.FLAG_XP;
-            }
-            if (this.companion.isPassiveHuntEnabled()) {
-                flags |= CompanionMenu.FLAG_PASSIVE;
-            }
-            if (this.companion.isHostileHuntEnabled()) {
-                flags |= CompanionMenu.FLAG_HOSTILE;
-            }
-            if (this.companion.isAutoEquipEnabled()) {
-                flags |= CompanionMenu.FLAG_AUTO_EQUIP;
-            }
-            return flags;
-        }
-
-        @Override
-        public void set(int index, int value) {
-            // Client-only
-        }
-
-        @Override
-        public int getCount() {
-            return DATA_SIZE;
         }
     }
 }
