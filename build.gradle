@@ -45,46 +45,11 @@ neoForge {
     }
 }
 
-def downloadedResourcesDir = layout.buildDirectory.dir("generated/resources")
-
 sourceSets.main.resources {
     srcDir 'src/generated/resources'
-    srcDir downloadedResourcesDir
 }
 
-def sophisticatedCoreTextures = [
-        'storage_background_9.png': 'https://raw.githubusercontent.com/P3pp3rF1y/SophisticatedCore/1.20.4/src/main/resources/assets/sophisticatedcore/textures/gui/storage_background_9.png',
-        'gui_controls.png'        : 'https://raw.githubusercontent.com/P3pp3rF1y/SophisticatedCore/1.20.4/src/main/resources/assets/sophisticatedcore/textures/gui/gui_controls.png',
-        'slots_background.png'    : 'https://raw.githubusercontent.com/P3pp3rF1y/SophisticatedCore/1.20.4/src/main/resources/assets/sophisticatedcore/textures/gui/slots_background.png',
-        'icons.png'               : 'https://raw.githubusercontent.com/P3pp3rF1y/SophisticatedCore/1.20.4/src/main/resources/assets/sophisticatedcore/textures/gui/icons.png'
-]
-
-tasks.register('fetchSophisticatedTextures') {
-    group = 'resources'
-    description = 'Downloads Sophisticated Core GUI textures so they can be bundled without checking binaries into git.'
-
-    def outputDir = downloadedResourcesDir.map { it.dir('assets/companionmod/textures/gui') }
-    outputs.dir(outputDir)
-    inputs.property('textureSources', sophisticatedCoreTextures)
-
-    doLast {
-        def targetDir = outputDir.get().asFile
-        sophisticatedCoreTextures.each { filename, url ->
-            def targetFile = new File(targetDir, filename)
-            targetFile.parentFile.mkdirs()
-            if (targetFile.exists()) {
-                logger.lifecycle("Reusing cached $filename at ${targetFile.absolutePath}")
-            } else {
-                logger.lifecycle("Downloading $filename from $url")
-            }
-            ant.get(src: url, dest: targetFile, skipexisting: 'true')
-        }
-    }
-}
-
-tasks.named('processResources') {
-    dependsOn('fetchSophisticatedTextures')
-}
+// Removed fetchSophisticatedTextures and all related duplicate/auto download code
 
 dependencies {
     // NeoForge dependency is added automatically by the plugin
