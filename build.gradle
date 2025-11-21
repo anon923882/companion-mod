@@ -21,23 +21,19 @@ java.toolchain.languageVersion = JavaLanguageVersion.of(21)
 
 neoForge {
     version = neoforge_version
-    
     runs {
         client {
             client()
         }
-        
         server {
             server()
             programArgument '--nogui'
         }
-        
         data {
             data()
             programArguments.addAll '--mod', mod_id, '--all', '--output', file('src/generated/resources/').getAbsolutePath(), '--existing', file('src/main/resources/').getAbsolutePath()
         }
     }
-    
     mods {
         companionmod {
             sourceSet sourceSets.main
@@ -45,11 +41,43 @@ neoForge {
     }
 }
 
+def sophisticatedCoreTextures = [
+        'slots_background.png': 'https://raw.githubusercontent.com/P3pp3rF1y/SophisticatedCore/1.20.4/src/main/resources/assets/sophisticatedcore/textures/gui/slots_background.png'
+]
+
+def downloadedResourcesDir = layout.buildDirectory.dir("generated/resources")
+
 sourceSets.main.resources {
     srcDir 'src/generated/resources'
+    srcDir downloadedResourcesDir
 }
 
-// Removed fetchSophisticatedTextures and all related duplicate/auto download code
+tasks.register('fetchSophisticatedTextures') {
+    group = 'resources'
+    description = 'Downloads Sophisticated Core equip slot texture so it can be bundled without checking binaries into git.'
+
+    def outputDir = downloadedResourcesDir.map { it.dir('assets/companionmod/textures/gui') }
+    outputs.dir(outputDir)
+    inputs.property('textureSources', sophisticatedCoreTextures)
+
+    doLast {
+        def targetDir = outputDir.get().asFile
+        sophisticatedCoreTextures.each { filename, url ->
+            def targetFile = new File(targetDir, filename)
+            targetFile.parentFile.mkdirs()
+            if (targetFile.exists()) {
+                logger.lifecycle("Reusing cached $filename at ${targetFile.absolutePath}")
+            } else {
+                logger.lifecycle("Downloading $filename from $url")
+                ant.get(src: url, dest: targetFile, skipexisting: 'true')
+            }
+        }
+    }
+}
+
+tasks.named('processResources') {
+    dependsOn('fetchSophisticatedTextures')
+}
 
 dependencies {
     // NeoForge dependency is added automatically by the plugin
