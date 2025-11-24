@@ -16,6 +16,12 @@ public final class CompanionGuiTextures {
 
     private static final String COMPANION_MOD = "companionmod";
 
+    // Use companionmod's own backpack_27.png in its gui textures directory
+    public static final ResourceLocation GUI_BACKGROUND = ResourceLocation.fromNamespaceAndPath(
+        COMPANION_MOD,
+        "textures/gui/backpack_27.png"
+    );
+
     public static final ResourceLocation STORAGE_BACKGROUND_9 = ResourceLocation.fromNamespaceAndPath(
         COMPANION_MOD,
         "textures/gui/storage_background_9.png");
