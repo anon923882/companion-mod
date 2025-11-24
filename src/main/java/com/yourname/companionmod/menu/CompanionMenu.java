@@ -44,6 +44,11 @@ public class CompanionMenu extends AbstractContainerMenu {
     private final CompanionEntity companion;
     private final ContainerData settingsData;
 
+    // ADDED: Helper method for standardized equip slot indexing, referenced by supplemental and UI code.
+    public static int getEquipSlotIndex(int offset) {
+        return CompanionEntity.STORAGE_SIZE + offset;
+    }
+
     public CompanionMenu(int containerId, Inventory playerInventory) {
         this(containerId, playerInventory, new SimpleContainer(CompanionEntity.TOTAL_SLOTS), null,
             new SimpleContainerData(SETTINGS_DATA_COUNT));
