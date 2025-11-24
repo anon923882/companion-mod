@@ -27,9 +27,9 @@ final class EquipmentColumnRenderer {
     }
 
     static void renderIcons(GuiGraphics guiGraphics, CompanionMenu menu, int slotX, int slotY, int slotSpacing, int slots) {
-        int renderSlots = Math.min(slots, CompanionMenu.EQUIPMENT_SLOT_COUNT);
+        int renderSlots = Math.min(slots, CompanionMenu.EQUIP_SLOT_COUNT);
         for (int i = 0; i < renderSlots; i++) {
-            Slot menuSlot = menu.getSlot(CompanionMenu.getEquipmentSlotIndex(i));
+            Slot menuSlot = menu.getSlot(CompanionMenu.getEquipSlotIndex(i));
             ItemStack stack = menuSlot != null ? menuSlot.getItem() : ItemStack.EMPTY;
             if (!stack.isEmpty()) {
                 guiGraphics.renderItem(stack, slotX + 1, slotY + 1 + i * slotSpacing);
