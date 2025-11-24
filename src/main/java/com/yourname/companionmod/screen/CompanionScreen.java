@@ -9,16 +9,14 @@ import net.minecraft.world.entity.player.Inventory;
 
 public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
     private static final ResourceLocation STORAGE_BACKGROUND = 
-        ResourceLocation.fromNamespaceAndPath("companionmod", "textures/gui/storage_background_9.png");
+        new ResourceLocation("companionmod", "textures/gui/storage_background_9.png");
     private static final ResourceLocation SLOTS_BACKGROUND = 
-        ResourceLocation.fromNamespaceAndPath("companionmod", "textures/gui/slots_background.png");
-    private static final int GUI_WIDTH = 194;
-    private static final int GUI_HEIGHT = 222;
+        new ResourceLocation("companionmod", "textures/gui/slots_background.png");
 
     public CompanionScreen(CompanionMenu menu, Inventory playerInventory, Component title) {
         super(menu, playerInventory, title);
-        this.imageWidth = GUI_WIDTH;
-        this.imageHeight = GUI_HEIGHT;
+        this.imageWidth = 194;
+        this.imageHeight = 222;
         this.titleLabelX = CompanionMenu.STORAGE_START_X;
         this.titleLabelY = 6;
         this.inventoryLabelX = CompanionMenu.STORAGE_START_X;
@@ -26,47 +24,20 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
     }
 
     @Override
-    protected void init() {
-        super.init();
-    }
-
-    @Override
     protected void renderBg(GuiGraphics guiGraphics, float partialTick, int mouseX, int mouseY) {
-        int x = this.leftPos;
-        int y = this.topPos;
-        renderStorageBackground(guiGraphics, x, y);
-        renderEquipSlotBackgrounds(guiGraphics, x, y);
-    }
-    
-    private void renderStorageBackground(GuiGraphics guiGraphics, int x, int y) {
-        int storageHeight = CompanionMenu.STORAGE_ROWS * 18 + 4;
-        guiGraphics.blit(STORAGE_BACKGROUND, 
-            x + CompanionMenu.STORAGE_START_X - 4, 
-            y + CompanionMenu.STORAGE_START_Y - 4,
-            0, 0, 
-            CompanionMenu.STORAGE_COLUMNS * 18 + 8, 
-            storageHeight, 
-            256, 256);
-        int playerInvY = y + CompanionMenu.PLAYER_INVENTORY_START_Y - 4;
-        guiGraphics.blit(STORAGE_BACKGROUND,
-            x + CompanionMenu.STORAGE_START_X - 4,
-            playerInvY,
-            0, 0,
-            CompanionMenu.STORAGE_COLUMNS * 18 + 8,
-            76,
-            256, 256);
-    }
-    
-    private void renderEquipSlotBackgrounds(GuiGraphics guiGraphics, int x, int y) {
-        int slotX = x + CompanionMenu.EQUIP_COLUMN_X;
-        int slotY = y + CompanionMenu.EQUIP_START_Y;
-        for (int i = 0; i < CompanionMenu.EQUIP_SLOT_COUNT; i++) {
-            guiGraphics.blit(SLOTS_BACKGROUND, 
-                slotX - 1, slotY - 1, 
-                0, 0, 
-                18, 18, 
-                256, 256);
-            slotY += CompanionMenu.EQUIP_SLOT_SPACING;
+        int x = (width - imageWidth) / 2;
+        int y = (height - imageHeight) / 2;
+
+        // Reference: SophisticatedCore/StorageScreenBase.java#L517-L524
+        guiGraphics.blit(STORAGE_BACKGROUND, x, y, 0, 0, imageWidth, imageHeight, 256, 256);
+
+        // Draw slot backgrounds for storage slots (reference: StorageScreenBase.java#L925)
+        int slotX = x + CompanionMenu.STORAGE_START_X;
+        int slotY = y + CompanionMenu.STORAGE_START_Y;
+        for (int row = 0; row < 3; ++row) {
+            for (int col = 0; col < 9; ++col) {
+                guiGraphics.blit(SLOTS_BACKGROUND, slotX + col * 18, slotY + row * 18, 0, 0, 18, 18, 256, 256);
+            }
         }
     }
 
