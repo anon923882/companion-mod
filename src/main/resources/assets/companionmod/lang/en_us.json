@@ -1,0 +1,12 @@
+{
+  "entity.companionmod.companion": "Companion",
+  "container.companionmod.companion_inventory": "Companion Inventory",
+  "gui.companionmod.equip_best": "Equip Best",
+  "gui.companionmod.settings": "Settings",
+  "gui.companionmod.settings.title": "Companion Settings",
+  "gui.companionmod.settings.follow": "Follow Owner",
+  "gui.companionmod.settings.auto_heal": "Auto-Heal",
+  "gui.companionmod.settings.auto_equip": "Auto-Equip Best",
+  "gui.companionmod.toggle.on": "On",
+  "gui.companionmod.toggle.off": "Off"
+}

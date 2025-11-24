@@ -1,0 +1,43 @@
+package com.yourname.companionmod.client;
+
+import com.mojang.blaze3d.platform.NativeImage;
+import com.yourname.companionmod.CompanionMod;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.texture.DynamicTexture;
+import net.minecraft.resources.ResourceLocation;
+
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.util.Base64;
+
+public final class CompanionTextures {
+    public static final ResourceLocation ENTITY =
+        ResourceLocation.fromNamespaceAndPath(CompanionMod.MOD_ID, "dynamic/entity/companion");
+
+    private CompanionTextures() {}
+
+    public static void bootstrap() {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft == null) {
+            return;
+        }
+
+        register(minecraft, ENTITY, ENTITY_PNG_BASE64);
+    }
+
+    private static void register(Minecraft minecraft, ResourceLocation resourceLocation, String base64Data) {
+        var textureManager = minecraft.getTextureManager();
+        textureManager.register(resourceLocation, new DynamicTexture(read(base64Data)));
+    }
+
+    private static NativeImage read(String base64Data) {
+        byte[] raw = Base64.getDecoder().decode(base64Data);
+        try (ByteArrayInputStream inputStream = new ByteArrayInputStream(raw)) {
+            return NativeImage.read(NativeImage.Format.RGBA, inputStream);
+        } catch (IOException exception) {
+            throw new IllegalStateException("Unable to decode embedded texture", exception);
+        }
+    }
+
+    private static final String ENTITY_PNG_BASE64 = "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";
+}
