@@ -9,9 +9,9 @@ import net.minecraft.world.entity.player.Inventory;
 
 public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
     private static final ResourceLocation STORAGE_BACKGROUND = 
-        new ResourceLocation("companionmod", "textures/gui/storage_background_9.png");
+        ResourceLocation.fromNamespaceAndPath("companionmod", "textures/gui/storage_background_9.png");
     private static final ResourceLocation SLOTS_BACKGROUND = 
-        new ResourceLocation("companionmod", "textures/gui/slots_background.png");
+        ResourceLocation.fromNamespaceAndPath("companionmod", "textures/gui/slots_background.png");
 
     public CompanionScreen(CompanionMenu menu, Inventory playerInventory, Component title) {
         super(menu, playerInventory, title);
