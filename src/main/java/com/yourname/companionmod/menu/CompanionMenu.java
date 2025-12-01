@@ -3,15 +3,16 @@ package com.yourname.companionmod.menu;
 import com.yourname.companionmod.entity.custom.CompanionEntity;
 import com.mojang.datafixers.util.Pair;
 import net.minecraft.core.component.DataComponents;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.Container;
 import net.minecraft.world.SimpleContainer;
-import net.minecraft.world.inventory.ContainerData;
-import net.minecraft.world.inventory.SimpleContainerData;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.inventory.InventoryMenu;
 import net.minecraft.world.inventory.Slot;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.inventory.ContainerData;
+import net.minecraft.world.inventory.SimpleContainerData;
 import net.minecraft.world.item.ArmorItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.ShieldItem;
@@ -20,16 +21,16 @@ import net.minecraft.world.item.TieredItem;
 
 public class CompanionMenu extends AbstractContainerMenu {
     public static final int SLOT_SPACING = 18;
+    public static final int EQUIP_COLUMN_X = 8;
+    public static final int EQUIP_START_Y = 18;
+    public static final int EQUIP_SLOT_SPACING = 18;
+    public static final int EQUIP_SLOT_COUNT = 6;
     public static final int STORAGE_COLUMNS = 9;
     public static final int STORAGE_ROWS = 3;
-    public static final int STORAGE_START_X = 8;
+    public static final int STORAGE_START_X = 44;
     public static final int STORAGE_START_Y = 18;
     public static final int PLAYER_INVENTORY_START_Y = 86;
     public static final int HOTBAR_Y = 144;
-    public static final int EQUIPMENT_COLUMN_X = -15;
-    public static final int EQUIPMENT_START_Y = 6;
-    public static final int EQUIPMENT_SLOT_SPACING = 16;
-    public static final int EQUIPMENT_SLOT_COUNT = 6;
     public static final int BUTTON_EQUIP_BEST = 0;
     public static final int BUTTON_TOGGLE_FOLLOW = 1;
     public static final int BUTTON_TOGGLE_AUTO_HEAL = 2;
@@ -43,22 +44,21 @@ public class CompanionMenu extends AbstractContainerMenu {
     private final CompanionEntity companion;
     private final ContainerData settingsData;
 
-    // Client constructor
+    // ADDED: Helper method for standardized equip slot indexing, referenced by supplemental and UI code.
+    public static int getEquipSlotIndex(int offset) {
+        return CompanionEntity.STORAGE_SIZE + offset;
+    }
+
     public CompanionMenu(int containerId, Inventory playerInventory) {
         this(containerId, playerInventory, new SimpleContainer(CompanionEntity.TOTAL_SLOTS), null,
             new SimpleContainerData(SETTINGS_DATA_COUNT));
     }
 
-    // Server constructor
     public CompanionMenu(int containerId, Inventory playerInventory, Container companionInventory,
             CompanionEntity companion) {
         this(containerId, playerInventory, companionInventory, companion,
             companion == null ? new SimpleContainerData(SETTINGS_DATA_COUNT)
                 : new CompanionSettingsData(companion));
-    }
-
-    public static int getEquipmentSlotIndex(int offset) {
-        return CompanionEntity.STORAGE_SIZE + offset;
     }
 
     private CompanionMenu(int containerId, Inventory playerInventory, Container companionInventory,
@@ -72,7 +72,26 @@ public class CompanionMenu extends AbstractContainerMenu {
         companionInventory.startOpen(playerInventory.player);
         this.addDataSlots(settingsData);
 
-        // Companion storage inventory (27 slots only - 3 rows x 9 columns)
+        int equipX = EQUIP_COLUMN_X;
+        int equipY = EQUIP_START_Y;
+        this.addSlot(new EquipSlot(companionInventory, CompanionEntity.HELMET_SLOT,
+            equipX, equipY, EquipSlotType.HELMET));
+        equipY += EQUIP_SLOT_SPACING;
+        this.addSlot(new EquipSlot(companionInventory, CompanionEntity.CHEST_SLOT,
+            equipX, equipY, EquipSlotType.CHESTPLATE));
+        equipY += EQUIP_SLOT_SPACING;
+        this.addSlot(new EquipSlot(companionInventory, CompanionEntity.LEGS_SLOT,
+            equipX, equipY, EquipSlotType.LEGGINGS));
+        equipY += EQUIP_SLOT_SPACING;
+        this.addSlot(new EquipSlot(companionInventory, CompanionEntity.BOOTS_SLOT,
+            equipX, equipY, EquipSlotType.BOOTS));
+        equipY += EQUIP_SLOT_SPACING;
+        this.addSlot(new EquipSlot(companionInventory, CompanionEntity.MAIN_HAND_SLOT,
+            equipX, equipY, EquipSlotType.MAIN_HAND));
+        equipY += EQUIP_SLOT_SPACING;
+        this.addSlot(new EquipSlot(companionInventory, CompanionEntity.OFF_HAND_SLOT,
+            equipX, equipY, EquipSlotType.OFF_HAND));
+
         for (int row = 0; row < STORAGE_ROWS; row++) {
             for (int col = 0; col < STORAGE_COLUMNS; col++) {
                 int index = col + row * STORAGE_COLUMNS;
@@ -82,30 +101,6 @@ public class CompanionMenu extends AbstractContainerMenu {
             }
         }
 
-        // Equipment slots (separate from storage grid)
-        int equipmentColumnX = EQUIPMENT_COLUMN_X;
-        int equipmentSlotY = EQUIPMENT_START_Y;
-        this.addSlot(new ArmorSlot(companionInventory, CompanionEntity.HELMET_SLOT,
-            equipmentColumnX, equipmentSlotY, ArmorItem.Type.HELMET));
-        equipmentSlotY += EQUIPMENT_SLOT_SPACING;
-        this.addSlot(new ArmorSlot(companionInventory, CompanionEntity.CHEST_SLOT,
-            equipmentColumnX, equipmentSlotY, ArmorItem.Type.CHESTPLATE));
-        equipmentSlotY += EQUIPMENT_SLOT_SPACING;
-        this.addSlot(new ArmorSlot(companionInventory, CompanionEntity.LEGS_SLOT,
-            equipmentColumnX, equipmentSlotY, ArmorItem.Type.LEGGINGS));
-        equipmentSlotY += EQUIPMENT_SLOT_SPACING;
-        this.addSlot(new ArmorSlot(companionInventory, CompanionEntity.BOOTS_SLOT,
-            equipmentColumnX, equipmentSlotY, ArmorItem.Type.BOOTS));
-        equipmentSlotY += EQUIPMENT_SLOT_SPACING;
-
-        // Hand slots directly continue down the column, matching Sophisticated Backpacks spacing
-        this.addSlot(new MainHandSlot(companionInventory, CompanionEntity.MAIN_HAND_SLOT,
-            equipmentColumnX, equipmentSlotY));
-        equipmentSlotY += EQUIPMENT_SLOT_SPACING;
-        this.addSlot(new OffHandSlot(companionInventory, CompanionEntity.OFF_HAND_SLOT,
-            equipmentColumnX, equipmentSlotY));
-
-        // Player inventory (3 rows x 9 columns)
         for (int row = 0; row < 3; row++) {
             for (int col = 0; col < 9; col++) {
                 this.addSlot(new Slot(playerInventory, col + row * 9 + 9,
@@ -114,7 +109,6 @@ public class CompanionMenu extends AbstractContainerMenu {
             }
         }
 
-        // Player hotbar (9 columns)
         for (int col = 0; col < 9; col++) {
             this.addSlot(new Slot(playerInventory, col,
                 STORAGE_START_X + col * SLOT_SPACING, HOTBAR_Y));
@@ -148,6 +142,44 @@ public class CompanionMenu extends AbstractContainerMenu {
         }
 
         return itemstack;
+    }
+
+    private boolean movePlayerItemToCompanion(ItemStack stack) {
+        if (stack.getItem() instanceof ArmorItem armorItem) {
+            int slotIndex = getSlotIndexForArmor(armorItem.getType());
+            if (this.moveItemStackTo(stack, slotIndex, slotIndex + 1, false)) {
+                return true;
+            }
+        }
+
+        if (isValidMainHandItem(stack)) {
+            if (this.moveItemStackTo(stack, CompanionEntity.MAIN_HAND_SLOT, CompanionEntity.MAIN_HAND_SLOT + 1, false)) {
+                return true;
+            }
+        }
+
+        if (stack.getItem() instanceof ShieldItem) {
+            if (this.moveItemStackTo(stack, CompanionEntity.OFF_HAND_SLOT, CompanionEntity.OFF_HAND_SLOT + 1, false)) {
+                return true;
+            }
+        }
+
+        return this.moveItemStackTo(stack, 0, CompanionEntity.STORAGE_SIZE, false);
+    }
+
+    private static boolean isValidMainHandItem(ItemStack stack) {
+        return stack.has(DataComponents.FOOD) || stack.getItem() instanceof SwordItem
+            || stack.getItem() instanceof TieredItem;
+    }
+
+    private static int getSlotIndexForArmor(ArmorItem.Type type) {
+        return switch (type) {
+            case HELMET -> CompanionEntity.HELMET_SLOT;
+            case CHESTPLATE -> CompanionEntity.CHEST_SLOT;
+            case LEGGINGS -> CompanionEntity.LEGS_SLOT;
+            case BOOTS -> CompanionEntity.BOOTS_SLOT;
+            default -> throw new IllegalStateException("Unexpected armor slot: " + type);
+        };
     }
 
     @Override
@@ -211,102 +243,56 @@ public class CompanionMenu extends AbstractContainerMenu {
         this.setData(DATA_AUTO_EQUIP_ENABLED, newValue);
     }
 
-    private boolean movePlayerItemToCompanion(ItemStack stack) {
-        if (stack.getItem() instanceof ArmorItem armorItem) {
-            int slotIndex = getSlotIndexForArmor(armorItem.getType());
-            if (this.moveItemStackTo(stack, slotIndex, slotIndex + 1, false)) {
-                return true;
-            }
-        }
-
-        if (isValidMainHandItem(stack)) {
-            if (this.moveItemStackTo(stack, CompanionEntity.MAIN_HAND_SLOT, CompanionEntity.MAIN_HAND_SLOT + 1, false)) {
-                return true;
-            }
-        }
-
-        if (stack.getItem() instanceof ShieldItem) {
-            if (this.moveItemStackTo(stack, CompanionEntity.OFF_HAND_SLOT, CompanionEntity.OFF_HAND_SLOT + 1, false)) {
-                return true;
-            }
-        }
-
-        return this.moveItemStackTo(stack, 0, CompanionEntity.STORAGE_SIZE, false);
+    private enum EquipSlotType {
+        HELMET, CHESTPLATE, LEGGINGS, BOOTS, MAIN_HAND, OFF_HAND
     }
 
-    private static boolean isValidMainHandItem(ItemStack stack) {
-        return stack.has(DataComponents.FOOD) || stack.getItem() instanceof SwordItem
-            || stack.getItem() instanceof TieredItem;
-    }
+    private static class EquipSlot extends Slot {
+        private static final ResourceLocation EMPTY_ARMOR_SLOT_HELMET = 
+            ResourceLocation.withDefaultNamespace("item/empty_armor_slot_helmet");
+        private static final ResourceLocation EMPTY_ARMOR_SLOT_CHESTPLATE = 
+            ResourceLocation.withDefaultNamespace("item/empty_armor_slot_chestplate");
+        private static final ResourceLocation EMPTY_ARMOR_SLOT_LEGGINGS = 
+            ResourceLocation.withDefaultNamespace("item/empty_armor_slot_leggings");
+        private static final ResourceLocation EMPTY_ARMOR_SLOT_BOOTS = 
+            ResourceLocation.withDefaultNamespace("item/empty_armor_slot_boots");
+        private static final ResourceLocation EMPTY_ARMOR_SLOT_SHIELD = 
+            ResourceLocation.withDefaultNamespace("item/empty_armor_slot_shield");
+        
+        private final EquipSlotType slotType;
 
-    private static int getSlotIndexForArmor(ArmorItem.Type type) {
-        return switch (type) {
-            case HELMET -> CompanionEntity.HELMET_SLOT;
-            case CHESTPLATE -> CompanionEntity.CHEST_SLOT;
-            case LEGGINGS -> CompanionEntity.LEGS_SLOT;
-            case BOOTS -> CompanionEntity.BOOTS_SLOT;
-            default -> throw new IllegalStateException("Unexpected armor slot: " + type);
-        };
-    }
-
-    private static class ArmorSlot extends Slot {
-        private final ArmorItem.Type type;
-
-        public ArmorSlot(Container container, int index, int x, int y, ArmorItem.Type type) {
+        public EquipSlot(Container container, int index, int x, int y, EquipSlotType slotType) {
             super(container, index, x, y);
-            this.type = type;
+            this.slotType = slotType;
         }
 
         @Override
         public boolean mayPlace(ItemStack stack) {
-            return stack.getItem() instanceof ArmorItem armor && armor.getType() == this.type;
+            return switch (this.slotType) {
+                case HELMET -> stack.getItem() instanceof ArmorItem armor && armor.getType() == ArmorItem.Type.HELMET;
+                case CHESTPLATE -> stack.getItem() instanceof ArmorItem armor && armor.getType() == ArmorItem.Type.CHESTPLATE;
+                case LEGGINGS -> stack.getItem() instanceof ArmorItem armor && armor.getType() == ArmorItem.Type.LEGGINGS;
+                case BOOTS -> stack.getItem() instanceof ArmorItem armor && armor.getType() == ArmorItem.Type.BOOTS;
+                case MAIN_HAND -> isValidMainHandItem(stack);
+                case OFF_HAND -> stack.getItem() instanceof ShieldItem;
+            };
         }
 
         @Override
         public Pair<ResourceLocation, ResourceLocation> getNoItemIcon() {
-            return null;
+            return switch (this.slotType) {
+                case HELMET -> Pair.of(InventoryMenu.BLOCK_ATLAS, EMPTY_ARMOR_SLOT_HELMET);
+                case CHESTPLATE -> Pair.of(InventoryMenu.BLOCK_ATLAS, EMPTY_ARMOR_SLOT_CHESTPLATE);
+                case LEGGINGS -> Pair.of(InventoryMenu.BLOCK_ATLAS, EMPTY_ARMOR_SLOT_LEGGINGS);
+                case BOOTS -> Pair.of(InventoryMenu.BLOCK_ATLAS, EMPTY_ARMOR_SLOT_BOOTS);
+                case OFF_HAND -> Pair.of(InventoryMenu.BLOCK_ATLAS, EMPTY_ARMOR_SLOT_SHIELD);
+                default -> null;
+            };
         }
 
         @Override
         public int getMaxStackSize() {
-            return 1;
-        }
-    }
-
-    private static class MainHandSlot extends Slot {
-        public MainHandSlot(Container container, int index, int x, int y) {
-            super(container, index, x, y);
-        }
-
-        @Override
-        public boolean mayPlace(ItemStack stack) {
-            return isValidMainHandItem(stack);
-        }
-
-        @Override
-        public Pair<ResourceLocation, ResourceLocation> getNoItemIcon() {
-            return null;
-        }
-    }
-
-    private static class OffHandSlot extends Slot {
-        public OffHandSlot(Container container, int index, int x, int y) {
-            super(container, index, x, y);
-        }
-
-        @Override
-        public boolean mayPlace(ItemStack stack) {
-            return stack.getItem() instanceof ShieldItem;
-        }
-
-        @Override
-        public Pair<ResourceLocation, ResourceLocation> getNoItemIcon() {
-            return null;
-        }
-
-        @Override
-        public int getMaxStackSize() {
-            return 1;
+            return this.slotType == EquipSlotType.MAIN_HAND ? 64 : 1;
         }
     }
 
