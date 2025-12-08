@@ -1,6 +1,7 @@
 """Interactive CLI for scraping HappyMH chapter image URLs via jina.ai."""
 from __future__ import annotations
 
+import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -13,13 +14,16 @@ from bs4 import BeautifulSoup
 
 
 BANNER = r"""
-╔════════════════════════════════════════════════════╗
-║         HappyMH Chapter Scraper CLI                ║
-║  Repurposed for pulling chapter images via jina.ai ║
-╚════════════════════════════════════════════════════╝
+╔════════════════════════════════════════════════════════════╗
+║                  HappyMH Chapter Scraper                   ║
+║            (repurposed gofile.io-style CLI)                ║
+╠════════════════════════════════════════════════════════════╣
+║ Paste a HappyMH chapter/gallery URL to pull image links.   ║
+║ Commands: q = quit | h = help                              ║
+╚════════════════════════════════════════════════════════════╝
 """
 
-PROMPT_PREFIX = "➜"
+PROMPT_PREFIX = "[?]"
 
 
 @dataclass
@@ -29,9 +33,24 @@ class ChapterResult:
 
 
 class CliFormatter:
+    RULE = "─" * 58
+
     @staticmethod
     def title(text: str) -> str:
         return f"\n{text}\n" + "=" * len(text)
+
+    @staticmethod
+    def panel(title: str, body: str) -> str:
+        top = f"┌─ {title} " + "─" * max(0, 53 - len(title))
+        bottom = "└" + "─" * 56
+        contents = body.rstrip("\n")
+        if contents:
+            contents = "\n" + contents
+        return f"{top}{contents}\n{bottom}"
+
+    @staticmethod
+    def hr() -> str:
+        return CliFormatter.RULE
 
     @staticmethod
     def bullet_list(items: Iterable[str]) -> str:
@@ -47,6 +66,8 @@ class CliFormatter:
 
 
 class HappyMHScraper:
+    IMAGE_PATTERN = re.compile(r"!\[[^\]]*\]\((?P<url>[^)\s]+)")
+
     def __init__(self, session: requests.Session | None = None) -> None:
         self.session = session or requests.Session()
         self.session.headers.update(
@@ -79,13 +100,24 @@ class HappyMHScraper:
     def extract_images(self, html: str, base_url: str) -> List[str]:
         soup = BeautifulSoup(html, "html.parser")
         images: List[str] = []
-        for img in soup.find_all("img"):
-            src = img.get("src") or ""
-            if not src:
-                continue
-            src = urljoin(base_url, src)
+
+        def add(src: str) -> None:
+            src = src.strip()
+            if not src or src.startswith("blob:"):
+                return
+            if src.startswith("//"):
+                src = f"https:{src}"
+            if not src.startswith("http"):
+                src = urljoin(base_url, src)
             if src not in images:
                 images.append(src)
+
+        for img in soup.find_all("img"):
+            src = img.get("src") or ""
+            add(src)
+
+        for match in self.IMAGE_PATTERN.finditer(html):
+            add(match.group("url"))
         return images
 
     def scrape(self, url: str) -> ChapterResult:
@@ -101,10 +133,10 @@ class HappyMHCLI:
 
     def run(self) -> None:
         print(BANNER)
-        print("Interactive CLI ready. Paste a HappyMH chapter URL to continue.\n")
+        print(CliFormatter.panel("Flow", "1) Paste chapter URL\n2) Review results\n3) Optionally save the list"))
         while True:
             try:
-                url = input(f"{PROMPT_PREFIX} Chapter URL (or 'q' to quit): ").strip()
+                url = input(f"{PROMPT_PREFIX} Chapter URL: ").strip()
             except (KeyboardInterrupt, EOFError):
                 print("\nExiting.")
                 return
@@ -115,6 +147,9 @@ class HappyMHCLI:
             if url.lower() in {"q", "quit", "exit"}:
                 print("Bye!")
                 return
+            if url.lower() in {"h", "help"}:
+                self.show_help()
+                continue
 
             self.handle_url(url)
 
@@ -140,8 +175,13 @@ class HappyMHCLI:
             print(CliFormatter.warn("No images were found in this chapter."))
             return
 
-        print(CliFormatter.title("Chapter images"))
-        print(CliFormatter.bullet_list(result.images))
+        body = (
+            f"Source: {result.url}\n"
+            f"Found: {len(result.images)} image(s)\n"
+            f"{CliFormatter.hr()}\n"
+            f"{CliFormatter.bullet_list(result.images)}"
+        )
+        print(CliFormatter.panel("Scrape Result", body))
 
         save_choice = input(
             f"{PROMPT_PREFIX} Save image list to file? (y/N): "
@@ -163,6 +203,15 @@ class HappyMHCLI:
         slug = parsed.path.strip("/").replace("/", "_")
         slug = slug or "chapter"
         return f"{slug}_images.txt"
+
+    def show_help(self) -> None:
+        print(
+            CliFormatter.panel(
+                "Help",
+                "Paste a HappyMH chapter/gallery URL. The CLI uses jina.ai to fetch the page and extracts every image reference, including markdown images.\n"
+                "Type 'q' to exit or 'h' for this help panel.",
+            )
+        )
 
 
 def main(argv: list[str] | None = None) -> int:
