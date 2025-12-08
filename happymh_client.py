@@ -1,20 +1,15 @@
 import json
 import re
-import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, List, Tuple
 from urllib.parse import urlparse
 
-import cloudscraper
+import requests
 
 
 API_BASE = "https://m.happymh.com"
-HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
-    "Accept": "application/json, text/plain, */*",
-    "X-Requested-With": "XMLHttpRequest",
-}
+USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
 
 
 class HappyMHScraperError(RuntimeError):
@@ -30,7 +25,13 @@ class ChapterPayload:
 
 class HappyMHScraper:
     def __init__(self) -> None:
-        self.scraper = cloudscraper.create_scraper()
+        self.session = requests.Session()
+        self.session.headers.update(
+            {
+                "User-Agent": USER_AGENT,
+                "Accept": "application/json, text/plain, */*",
+            }
+        )
 
     @staticmethod
     def extract_code(input_value: str) -> str:
@@ -66,10 +67,15 @@ class HappyMHScraper:
         return meta, image_urls, json.dumps(payload, ensure_ascii=False, indent=2)
 
     def _fetch_reading_payload(self, code: str) -> dict:
-        params = {"code": code}
-        response = self.scraper.get(f"{API_BASE}/v2.0/apis/manga/reading", params=params, headers=HEADERS)
+        api_url = f"{API_BASE}/v2.0/apis/manga/reading?code={code}"
+        jina_url = self._wrap_with_jina(api_url)
         try:
-            data = response.json()
+            response = self.session.get(jina_url, timeout=30)
+        except Exception as exc:  # noqa: BLE001
+            raise HappyMHScraperError(f"Failed to reach happymh via jina.ai: {exc}") from exc
+
+        try:
+            data = self._parse_json_response(response.text)
         except json.JSONDecodeError as exc:
             raise HappyMHScraperError(f"Unexpected response from API: {response.status_code}") from exc
 
@@ -78,6 +84,26 @@ class HappyMHScraper:
             raise HappyMHScraperError(message)
 
         return data
+
+    @staticmethod
+    def _wrap_with_jina(url: str) -> str:
+        if url.startswith("http"):
+            return f"https://r.jina.ai/{url}"
+        return f"https://r.jina.ai/https://{url.lstrip('/')}"
+
+    @staticmethod
+    def _parse_json_response(body: str) -> dict:
+        """Handle plain JSON or fenced markdown returned by jina.ai."""
+        text = body.strip()
+        if text.startswith("```"):
+            lines = text.splitlines()
+            # Drop the first fence
+            lines = lines[1:]
+            # Remove trailing fence if present
+            if lines and lines[-1].startswith("```"):
+                lines = lines[:-1]
+            text = "\n".join(lines)
+        return json.loads(text)
 
     def _extract_images(self, payload: dict) -> List[str]:
         """Pull image URLs from the API response using a few common key names."""
@@ -115,7 +141,7 @@ class HappyMHScraper:
         saved: List[Path] = []
         for index, url in enumerate(image_urls, start=1):
             try:
-                response = self.scraper.get(url, headers={"User-Agent": HEADERS["User-Agent"]}, timeout=30)
+                response = self.session.get(url, headers={"User-Agent": USER_AGENT}, timeout=30)
             except Exception as exc:  # noqa: BLE001
                 raise HappyMHScraperError(f"Failed to fetch image {url}: {exc}") from exc
 

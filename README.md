@@ -5,7 +5,7 @@ A small CLI for downloading image galleries (chapters) from `m.happymh.com`. It 
 ## Usage
 
 ```bash
-python cli.py https://m.happymh.com/mangaread/<chapter_code>
+python main.py https://m.happymh.com/mangaread/<chapter_code>
 ```
 
 Options:
@@ -15,7 +15,7 @@ Options:
 - `--dry-run` – Print what would be downloaded without fetching files.
 - `--include-json` – Save the raw API payload for debugging.
 
-The scraper uses `cloudscraper` to bypass Cloudflare and will surface helpful error messages if a code is invalid or expired.
+Requests are routed through the public `r.jina.ai` proxy to avoid Cloudflare challenges while keeping the CLI's original formatting style.
 
 ## Setup
 
