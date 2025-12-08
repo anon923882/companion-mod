@@ -8,6 +8,9 @@ A small CLI for downloading image galleries (chapters) from `m.happymh.com`. It 
 python main.py https://m.happymh.com/mangaread/<chapter_code>
 ```
 
+If you just run `python main.py` without arguments, you'll be prompted for the
+chapter URL/code (matching the old Go-file CLI flow).
+
 Options:
 
 - `-o, --output` – Directory to store images.

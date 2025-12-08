@@ -13,6 +13,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "input",
+        nargs="?",
         help="Full mangaread URL or raw chapter code from m.happymh.com",
     )
     parser.add_argument(
@@ -63,9 +64,23 @@ def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
 
+    # Preserve the old Go-file style UX by letting users hit Enter and get prompted
+    # for the chapter URL/code instead of immediately erroring out.
+    chapter_input = args.input
+    if not chapter_input:
+        try:
+            chapter_input = input("Chapter URL or code: ").strip()
+        except EOFError:
+            chapter_input = ""
+
+    if not chapter_input:
+        parser.print_usage(sys.stderr)
+        print("error: no chapter URL or code provided", file=sys.stderr)
+        return 1
+
     scraper = HappyMHScraper()
     try:
-        chapter_code = scraper.extract_code(args.input)
+        chapter_code = scraper.extract_code(chapter_input)
     except ValueError as exc:
         print(f"[error] {exc}", file=sys.stderr)
         return 1
