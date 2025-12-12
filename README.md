@@ -5,9 +5,11 @@ official NeoForge userdev/MDK setup (no custom frameworks, mixins, or client ass
 
 ## Building (lightweight + by the book)
 
+Wrapper binaries are intentionally omitted to keep the repo lean, so call your locally installed Gradle instead of `./gradlew`.
+
 1. Install JDK 21 (matching the toolchain in `build.gradle`).
-2. Install a local Gradle 8.14+ (wrapper files are intentionally omitted to avoid committing binaries).
-3. From the project root run `gradle build`. The produced mod jar will be in `build/libs/`.
+2. Install a local Gradle 8.14+ (e.g., via SDKMAN or your package manager).
+3. From the project root run `gradle --console=plain build`. The produced mod jar will be in `build/libs/`.
 
 This mirrors the steps from the official NeoForge docs while keeping the repository lean—only source, metadata, and Gradle config.
 
