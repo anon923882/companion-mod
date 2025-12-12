@@ -8,6 +8,10 @@ runs/
 *.ipr
 *.iws
 .idea/
-gradle/
-gradlew
-gradlew.bat
+# Allow wrapper scripts and metadata but ignore downloaded binaries
+!/gradle/
+!/gradle/wrapper/
+!/gradlew
+!/gradlew.bat
+gradle/wrapper/*.jar
+gradle/wrapper/dists/
