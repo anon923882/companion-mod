@@ -7,7 +7,7 @@ A minimal NeoForge mod for Minecraft 1.21.1 that automatically replants mature c
 Wrapper scripts are provided for convenience but no binary files are tracked. On first use `./gradlew` will download the Gradle wrapper JAR directly from gradle.org so the repo stays free of binaries while remaining easy to build.
 
 1. Install JDK 21 (matching the toolchain in `build.gradle`).
-2. Run `./gradlew --console=plain build`. The wrapper will fetch Gradle 8.10.1 automatically and place the built mod jar in `build/libs/`.
+2. Run `./gradlew --console=plain build`. The wrapper will fetch Gradle 8.14 automatically and place the built mod jar in `build/libs/`.
 
 This mirrors the steps from the official NeoForge docs while keeping the repository lean—only source, metadata, and Gradle config.
 
