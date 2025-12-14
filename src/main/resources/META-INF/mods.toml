@@ -1,0 +1,27 @@
+modLoader="javafml"
+loaderVersion="[4,)"
+license="MIT"
+issueTrackerURL=""
+
+[[mods]]
+modId="companionmod"
+version="${version}"
+displayName="Companion Auto Replanter"
+authors="Example Author"
+description='''
+Automatically replants mature crops immediately after harvest so fields stay planted.
+'''
+
+[[dependencies.companionmod]]
+modId="neoforge"
+type="required"
+versionRange="[21.1.209,)"
+ordering="NONE"
+side="BOTH"
+
+[[dependencies.companionmod]]
+modId="minecraft"
+type="required"
+versionRange="[1.21.1]"
+ordering="NONE"
+side="BOTH"

@@ -1,0 +1,17 @@
+.gradle/
+build/
+out/
+run/
+runs/
+.DS_Store
+*.iml
+*.ipr
+*.iws
+.idea/
+# Allow wrapper scripts and metadata but ignore downloaded binaries
+!/gradle/
+!/gradle/wrapper/
+!/gradlew
+!/gradlew.bat
+gradle/wrapper/*.jar
+gradle/wrapper/dists/
