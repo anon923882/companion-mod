@@ -46,13 +46,26 @@ import java.util.UUID;
 
 public class CompanionEntity extends PathfinderMob implements MenuProvider, RangedAttackMob {
     private static final EntityDataAccessor<Optional<UUID>> OWNER_UUID = SynchedEntityData.defineId(CompanionEntity.class, EntityDataSerializers.OPTIONAL_UUID);
-    private final CompanionInventory inventory = new CompanionInventory();
-    private final CompanionEquipmentHandler equipmentHandler = new CompanionEquipmentHandler(this, inventory);
-    private final CombatHandler combatHandler = new CombatHandler(this, inventory);
+    private CompanionInventory inventory;
+    private CompanionEquipmentHandler equipmentHandler;
+    private CombatHandler combatHandler;
     private int openCount = 0;
 
     public CompanionEntity(EntityType<? extends PathfinderMob> type, Level level) {
         super(type, level);
+        ensureHandlers();
+    }
+
+    private void ensureHandlers() {
+        if (this.inventory == null) {
+            this.inventory = new CompanionInventory();
+        }
+        if (this.equipmentHandler == null) {
+            this.equipmentHandler = new CompanionEquipmentHandler(this, this.inventory);
+        }
+        if (this.combatHandler == null) {
+            this.combatHandler = new CombatHandler(this, this.inventory);
+        }
     }
 
     public static AttributeSupplier.Builder createAttributes() {
@@ -70,6 +83,7 @@ public class CompanionEntity extends PathfinderMob implements MenuProvider, Rang
 
     @Override
     protected void registerGoals() {
+        ensureHandlers();
         this.goalSelector.addGoal(0, new FloatGoal(this));
         this.goalSelector.addGoal(5, new WaterAvoidingRandomStrollGoal(this, 0.8D));
         this.goalSelector.addGoal(6, new LookAtPlayerGoal(this, Player.class, 8.0F));
@@ -80,6 +94,7 @@ public class CompanionEntity extends PathfinderMob implements MenuProvider, Rang
 
     @Override
     public InteractionResult mobInteract(Player player, InteractionHand hand) {
+        ensureHandlers();
         ItemStack held = player.getItemInHand(hand);
         if (!this.level().isClientSide && getOwnerUUID().isEmpty()) {
             setOwner(player);
@@ -102,6 +117,7 @@ public class CompanionEntity extends PathfinderMob implements MenuProvider, Rang
 
 
     public CompanionInventory getInventory() {
+        ensureHandlers();
         return inventory;
     }
 
@@ -118,11 +134,13 @@ public class CompanionEntity extends PathfinderMob implements MenuProvider, Rang
 
     @Override
     public AbstractContainerMenu createMenu(int id, Inventory playerInventory, Player player) {
+        ensureHandlers();
         return CompanionMenu.forServer(id, playerInventory, this);
     }
 
     @Override
     public void addAdditionalSaveData(CompoundTag tag) {
+        ensureHandlers();
         super.addAdditionalSaveData(tag);
         inventory.saveToTag(tag, this.registryAccess());
         getOwnerUUID().ifPresent(uuid -> tag.putUUID("Owner", uuid));
@@ -130,6 +148,7 @@ public class CompanionEntity extends PathfinderMob implements MenuProvider, Rang
 
     @Override
     public void readAdditionalSaveData(CompoundTag tag) {
+        ensureHandlers();
         super.readAdditionalSaveData(tag);
         inventory.loadFromTag(tag, this.registryAccess());
         if (tag.hasUUID("Owner")) {
@@ -140,11 +159,13 @@ public class CompanionEntity extends PathfinderMob implements MenuProvider, Rang
 
     @Override
     public void setItemSlot(EquipmentSlot slot, ItemStack stack) {
+        ensureHandlers();
         super.setItemSlot(slot, stack);
         equipmentHandler.pullSlotToInventory(slot);
     }
 
     public void syncAllEquipmentSlots() {
+        ensureHandlers();
         equipmentHandler.syncAllToEntity();
     }
 
@@ -152,6 +173,7 @@ public class CompanionEntity extends PathfinderMob implements MenuProvider, Rang
     public void aiStep() {
         super.aiStep();
         if (!this.level().isClientSide) {
+            ensureHandlers();
             equipmentHandler.pullAllFromEntity();
             if (openCount > 0) {
                 stopMovingAndFaceOwner();
@@ -161,11 +183,13 @@ public class CompanionEntity extends PathfinderMob implements MenuProvider, Rang
     }
 
     public void syncEquipmentSlot(EquipmentSlot equipmentSlot) {
+        ensureHandlers();
         equipmentHandler.syncEquipmentSlot(equipmentSlot);
     }
 
     @Override
     protected void hurtArmor(net.minecraft.world.damagesource.DamageSource source, float amount) {
+        ensureHandlers();
         equipmentHandler.hurtArmor(source, amount);
     }
 
@@ -176,6 +200,7 @@ public class CompanionEntity extends PathfinderMob implements MenuProvider, Rang
 
     @Override
     public boolean hurt(net.minecraft.world.damagesource.DamageSource source, float amount) {
+        ensureHandlers();
         boolean result = super.hurt(source, amount);
         if (result && !this.level().isClientSide) {
             equipmentHandler.pullAllFromEntity();
@@ -188,6 +213,7 @@ public class CompanionEntity extends PathfinderMob implements MenuProvider, Rang
     }
 
     public void onMenuOpened(Player player) {
+        ensureHandlers();
         if (openCount == 0) {
             getNavigation().stop();
         }
@@ -195,6 +221,7 @@ public class CompanionEntity extends PathfinderMob implements MenuProvider, Rang
     }
 
     public void onMenuClosed(Player player) {
+        ensureHandlers();
         if (openCount > 0) {
             openCount--;
         }
