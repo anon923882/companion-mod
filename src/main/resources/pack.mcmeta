@@ -1,0 +1,10 @@
+{
+  "pack": {
+    "description": "Companion mod resources",
+    "pack_format": 34,
+    "supported_formats": {
+      "min": 34,
+      "max": 34
+    }
+  }
+}
