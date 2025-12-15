@@ -123,6 +123,14 @@ public class CompanionEntity extends PathfinderMob implements MenuProvider {
         syncEquipmentSlot(EquipmentSlot.MAINHAND);
     }
 
+    @Override
+    public void aiStep() {
+        super.aiStep();
+        if (!this.level().isClientSide) {
+            syncAllEquipmentSlots();
+        }
+    }
+
     public void syncEquipmentSlot(EquipmentSlot equipmentSlot) {
         int index = slotIndexFor(equipmentSlot);
         if (index >= 0) {
