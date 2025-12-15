@@ -49,14 +49,14 @@ public class CompanionMenu extends AbstractContainerMenu {
 
     private void addPlayerInventory(Inventory playerInventory) {
         int left = 8;
-        int top = 86;
+        int top = 165;
         for (int row = 0; row < 3; ++row) {
             for (int column = 0; column < 9; ++column) {
                 this.addSlot(new Slot(playerInventory, column + row * 9 + 9, left + column * 18, top + row * 18));
             }
         }
 
-        int hotbarY = 144;
+        int hotbarY = 223;
         for (int column = 0; column < 9; ++column) {
             this.addSlot(new Slot(playerInventory, column, left + column * 18, hotbarY));
         }
