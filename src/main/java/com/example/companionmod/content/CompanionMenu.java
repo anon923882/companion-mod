@@ -26,6 +26,18 @@ public class CompanionMenu extends AbstractContainerMenu {
         addPlayerInventory(playerInventory);
     }
 
+    public CompanionEntity getCompanion() {
+        return companion;
+    }
+
+    public net.minecraft.network.chat.Component getOwnerLabel() {
+        net.minecraft.network.chat.Component ownerName = companion.getOwnerNameComponent();
+        if (ownerName != null) {
+            return net.minecraft.network.chat.Component.translatable("menu." + com.example.companionmod.CompanionMod.MOD_ID + ".owner_label", ownerName);
+        }
+        return null;
+    }
+
     public static CompanionMenu forServer(int id, Inventory playerInventory, CompanionEntity companion) {
         return new CompanionMenu(id, playerInventory, companion);
     }

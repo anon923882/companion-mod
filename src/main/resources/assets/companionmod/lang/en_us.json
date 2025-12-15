@@ -1,5 +1,6 @@
 {
   "item.companionmod.companion_spawn_egg": "Companion Spawn Egg",
   "entity.companionmod.companion": "Companion",
-  "menu.companionmod.companion_inventory": "%s's Slave"
+  "menu.companionmod.companion_inventory": "%s's Inventory",
+  "menu.companionmod.owner_label": "%s's Slave"
 }

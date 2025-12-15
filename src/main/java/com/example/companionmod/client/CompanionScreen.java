@@ -29,5 +29,12 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
         this.renderBackground(guiGraphics, mouseX, mouseY, partialTicks);
         super.render(guiGraphics, mouseX, mouseY, partialTicks);
         this.renderTooltip(guiGraphics, mouseX, mouseY);
+
+        var ownerLabel = this.menu.getOwnerLabel();
+        if (ownerLabel != null) {
+            int labelWidth = this.font.width(ownerLabel);
+            int x = this.leftPos + this.imageWidth - labelWidth - 8;
+            guiGraphics.drawString(this.font, ownerLabel, x, this.topPos + 6, 0x404040, false);
+        }
     }
 }

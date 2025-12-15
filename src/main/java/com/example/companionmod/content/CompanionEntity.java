@@ -5,6 +5,7 @@ import com.example.companionmod.content.companion.CompanionEquipmentHandler;
 import com.example.companionmod.content.companion.CompanionInventory;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
+import com.example.companionmod.content.companion.CombatHandler;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
@@ -30,20 +31,24 @@ import net.minecraft.world.entity.ai.goal.LookAtPlayerGoal;
 import net.minecraft.world.entity.ai.goal.RandomLookAroundGoal;
 import net.minecraft.world.entity.ai.goal.WaterAvoidingRandomStrollGoal;
 import net.minecraft.world.entity.ai.goal.target.HurtByTargetGoal;
+import net.minecraft.world.entity.monster.Creeper;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.ProjectileWeaponItem;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.entity.monster.RangedAttackMob;
 import java.util.Optional;
 import java.util.UUID;
 
-public class CompanionEntity extends PathfinderMob implements MenuProvider {
+public class CompanionEntity extends PathfinderMob implements MenuProvider, RangedAttackMob {
     private static final EntityDataAccessor<Optional<UUID>> OWNER_UUID = SynchedEntityData.defineId(CompanionEntity.class, EntityDataSerializers.OPTIONAL_UUID);
     private final CompanionInventory inventory = new CompanionInventory();
     private final CompanionEquipmentHandler equipmentHandler = new CompanionEquipmentHandler(this, inventory);
+    private final CombatHandler combatHandler = new CombatHandler(this, inventory);
     private int openCount = 0;
 
     public CompanionEntity(EntityType<? extends PathfinderMob> type, Level level) {
@@ -69,6 +74,7 @@ public class CompanionEntity extends PathfinderMob implements MenuProvider {
         this.goalSelector.addGoal(5, new WaterAvoidingRandomStrollGoal(this, 0.8D));
         this.goalSelector.addGoal(6, new LookAtPlayerGoal(this, Player.class, 8.0F));
         this.goalSelector.addGoal(7, new RandomLookAroundGoal(this));
+        this.goalSelector.addGoal(2, combatHandler.createCombatGoal());
         this.targetSelector.addGoal(1, new HurtByTargetGoal(this));
     }
 
@@ -101,10 +107,6 @@ public class CompanionEntity extends PathfinderMob implements MenuProvider {
 
     @Override
     public Component getDisplayName() {
-        Component ownerName = getOwnerNameComponent();
-        if (ownerName != null) {
-            return Component.translatable("menu." + CompanionMod.MOD_ID + ".companion_inventory", ownerName);
-        }
         Component nameComponent = this.hasCustomName() ? this.getCustomName() : Component.translatable("entity." + CompanionMod.MOD_ID + ".companion");
         return Component.translatable("menu." + CompanionMod.MOD_ID + ".companion_inventory", nameComponent);
     }
@@ -154,6 +156,7 @@ public class CompanionEntity extends PathfinderMob implements MenuProvider {
             if (openCount > 0) {
                 stopMovingAndFaceOwner();
             }
+            combatHandler.tick();
         }
     }
 
@@ -205,6 +208,15 @@ public class CompanionEntity extends PathfinderMob implements MenuProvider {
             Vec3 lookPos = owner.position();
             lookControl.setLookAt(lookPos.x, lookPos.y + owner.getEyeHeight(), lookPos.z);
         }
+    }
+
+    @Override
+    public void performRangedAttack(LivingEntity target, float distanceFactor) {
+        ItemStack projectileWeapon = this.getMainHandItem();
+        if (!(projectileWeapon.getItem() instanceof ProjectileWeaponItem weapon)) {
+            return;
+        }
+        combatHandler.shootProjectile(target, weapon, projectileWeapon, distanceFactor);
     }
 
     @Override
