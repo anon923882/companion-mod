@@ -40,7 +40,7 @@ public class CompanionMenu extends AbstractContainerMenu {
         int slotIndex = 0;
         int left = 8;
 
-        int[] firstRowXs = {left, left + 18, left + 36, left + 54, left + 72};
+        int[] firstRowXs = {left, left + 18, left + 36, left + 54, left + 90};
         for (int x : firstRowXs) {
             this.addSlot(new Slot(inventory, slotIndex++, x, 18));
         }
