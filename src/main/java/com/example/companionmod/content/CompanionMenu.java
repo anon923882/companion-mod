@@ -39,24 +39,26 @@ public class CompanionMenu extends AbstractContainerMenu {
     private void addCompanionSlots() {
         int slotIndex = 0;
         int left = 8;
-        int top = 18;
-        for (int row = 0; row < 3; row++) {
+        int[] rows = {18, 40, 58, 76, 98};
+
+        for (int rowY : rows) {
             for (int column = 0; column < 9; column++) {
-                this.addSlot(new Slot(inventory, slotIndex++, left + column * 18, top + row * 18));
+                this.addSlot(new Slot(inventory, slotIndex++, left + column * 18, rowY));
             }
         }
     }
 
     private void addPlayerInventory(Inventory playerInventory) {
         int left = 8;
-        int top = 165;
-        for (int row = 0; row < 3; ++row) {
+        int[] inventoryRows = {163, 181, 199};
+        for (int row = 0; row < inventoryRows.length; ++row) {
+            int rowY = inventoryRows[row];
             for (int column = 0; column < 9; ++column) {
-                this.addSlot(new Slot(playerInventory, column + row * 9 + 9, left + column * 18, top + row * 18));
+                this.addSlot(new Slot(playerInventory, column + row * 9 + 9, left + column * 18, rowY));
             }
         }
 
-        int hotbarY = 223;
+        int hotbarY = 221;
         for (int column = 0; column < 9; ++column) {
             this.addSlot(new Slot(playerInventory, column, left + column * 18, hotbarY));
         }
@@ -69,7 +71,7 @@ public class CompanionMenu extends AbstractContainerMenu {
         if (slot != null && slot.hasItem()) {
             ItemStack stackInSlot = slot.getItem();
             itemstack = stackInSlot.copy();
-            int companionSlots = 27;
+            int companionSlots = inventory.getContainerSize();
             if (slotIndex < companionSlots) {
                 if (!this.moveItemStackTo(stackInSlot, companionSlots, this.slots.size(), true)) {
                     return ItemStack.EMPTY;

@@ -29,7 +29,9 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.ContainerHelper;
 
 public class CompanionEntity extends PathfinderMob implements MenuProvider {
-    private final SimpleContainer inventory = new SimpleContainer(27);
+    private static final int INVENTORY_SIZE = 45;
+
+    private final SimpleContainer inventory = new SimpleContainer(INVENTORY_SIZE);
 
     public CompanionEntity(EntityType<? extends PathfinderMob> type, Level level) {
         super(type, level);
