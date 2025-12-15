@@ -1,0 +1,2 @@
+# Treat base64-encoded assets as text so patches stay diffable and avoid binary gating.
+*.b64 text working-tree-encoding=UTF-8
