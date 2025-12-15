@@ -1,7 +1,8 @@
 package com.example.companionmod.content;
 
 import com.example.companionmod.CompanionMod;
-import net.minecraft.core.NonNullList;
+import com.example.companionmod.content.companion.CompanionEquipmentHandler;
+import com.example.companionmod.content.companion.CompanionInventory;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
@@ -11,7 +12,6 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.MenuProvider;
 import net.minecraft.world.Containers;
-import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.PathfinderMob;
@@ -28,21 +28,14 @@ import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.network.chat.Component;
-import net.minecraft.world.ContainerHelper;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.TamableAnimal;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.core.BlockPos;
 
 public class CompanionEntity extends PathfinderMob implements MenuProvider {
-    private static final int INVENTORY_SIZE = 41;
-    private static final int HEAD_SLOT_INDEX = 0;
-    private static final int CHEST_SLOT_INDEX = 1;
-    private static final int LEGS_SLOT_INDEX = 2;
-    private static final int FEET_SLOT_INDEX = 3;
-    private static final int MAINHAND_SLOT_INDEX = 4;
-
-    private final SimpleContainer inventory = new SimpleContainer(INVENTORY_SIZE);
+    private final CompanionInventory inventory = new CompanionInventory();
+    private final CompanionEquipmentHandler equipmentHandler = new CompanionEquipmentHandler(this, inventory);
 
     public CompanionEntity(EntityType<? extends PathfinderMob> type, Level level) {
         super(type, level);
@@ -81,7 +74,7 @@ public class CompanionEntity extends PathfinderMob implements MenuProvider {
     }
 
 
-    public SimpleContainer getInventory() {
+    public CompanionInventory getInventory() {
         return inventory;
     }
 
@@ -104,108 +97,41 @@ public class CompanionEntity extends PathfinderMob implements MenuProvider {
     @Override
     public void addAdditionalSaveData(CompoundTag tag) {
         super.addAdditionalSaveData(tag);
-        NonNullList<ItemStack> stacks = NonNullList.withSize(inventory.getContainerSize(), ItemStack.EMPTY);
-        for (int i = 0; i < inventory.getContainerSize(); i++) {
-            stacks.set(i, inventory.getItem(i));
-        }
-        ContainerHelper.saveAllItems(tag, stacks, this.registryAccess());
+        inventory.saveToTag(tag, this.registryAccess());
     }
 
     @Override
     public void readAdditionalSaveData(CompoundTag tag) {
         super.readAdditionalSaveData(tag);
-        if (tag.contains("Inventory")) {
-            NonNullList<ItemStack> stacks = NonNullList.withSize(inventory.getContainerSize(), ItemStack.EMPTY);
-            ContainerHelper.loadAllItems(tag, stacks, this.registryAccess());
-            for (int i = 0; i < stacks.size() && i < inventory.getContainerSize(); i++) {
-                inventory.setItem(i, stacks.get(i));
-            }
-            syncAllEquipmentSlots();
-        }
+        inventory.loadFromTag(tag, this.registryAccess());
+        syncAllEquipmentSlots();
     }
 
     @Override
     public void setItemSlot(EquipmentSlot slot, ItemStack stack) {
-        int index = slotIndexFor(slot);
-        if (index >= 0) {
-            inventory.setItem(index, stack);
-            super.setItemSlot(slot, stack);
-        } else {
-            super.setItemSlot(slot, stack);
-        }
+        super.setItemSlot(slot, stack);
+        equipmentHandler.pullSlotToInventory(slot);
     }
 
     public void syncAllEquipmentSlots() {
-        syncEquipmentSlot(EquipmentSlot.HEAD);
-        syncEquipmentSlot(EquipmentSlot.CHEST);
-        syncEquipmentSlot(EquipmentSlot.LEGS);
-        syncEquipmentSlot(EquipmentSlot.FEET);
-        syncEquipmentSlot(EquipmentSlot.MAINHAND);
+        equipmentHandler.syncAllToEntity();
     }
 
     @Override
     public void aiStep() {
         super.aiStep();
         if (!this.level().isClientSide) {
-            pullEquipmentState();
+            equipmentHandler.pullAllFromEntity();
         }
     }
 
     public void syncEquipmentSlot(EquipmentSlot equipmentSlot) {
-        int index = slotIndexFor(equipmentSlot);
-        if (index >= 0) {
-            ItemStack stack = inventory.getItem(index);
-            ItemStack previous = super.getItemBySlot(equipmentSlot);
-            if (stacksDiffer(previous, stack)) {
-                super.setItemSlot(equipmentSlot, stack.copy());
-            }
-        }
+        equipmentHandler.syncEquipmentSlot(equipmentSlot);
     }
 
-    private void pullEquipmentState() {
-        updateInventorySlot(EquipmentSlot.HEAD);
-        updateInventorySlot(EquipmentSlot.CHEST);
-        updateInventorySlot(EquipmentSlot.LEGS);
-        updateInventorySlot(EquipmentSlot.FEET);
-        updateInventorySlot(EquipmentSlot.MAINHAND);
-    }
-
-    private void updateInventorySlot(EquipmentSlot slot) {
-        int index = slotIndexFor(slot);
-        if (index >= 0) {
-            ItemStack equipped = super.getItemBySlot(slot);
-            ItemStack stored = inventory.getItem(index);
-            if (stacksDiffer(stored, equipped)) {
-                inventory.setItem(index, equipped.copy());
-            }
-        }
-    }
-
-    private static boolean stacksDiffer(ItemStack first, ItemStack second) {
-        if (first.isEmpty() && second.isEmpty()) {
-            return false;
-        }
-        if (first.isEmpty() != second.isEmpty()) {
-            return true;
-        }
-        if (!ItemStack.isSameItemSameComponents(first, second)) {
-            return true;
-        }
-        if (first.getCount() != second.getCount()) {
-            return true;
-        }
-        return first.getDamageValue() != second.getDamageValue();
-    }
-
-    private static int slotIndexFor(EquipmentSlot slot) {
-        return switch (slot) {
-            case HEAD -> HEAD_SLOT_INDEX;
-            case CHEST -> CHEST_SLOT_INDEX;
-            case LEGS -> LEGS_SLOT_INDEX;
-            case FEET -> FEET_SLOT_INDEX;
-            case MAINHAND -> MAINHAND_SLOT_INDEX;
-            default -> -1;
-        };
+    @Override
+    protected void hurtArmor(net.minecraft.world.damagesource.DamageSource source, float amount) {
+        equipmentHandler.hurtArmor(source, amount);
     }
 
     @Override
@@ -217,7 +143,7 @@ public class CompanionEntity extends PathfinderMob implements MenuProvider {
     public boolean hurt(net.minecraft.world.damagesource.DamageSource source, float amount) {
         boolean result = super.hurt(source, amount);
         if (result && !this.level().isClientSide) {
-            pullEquipmentState();
+            equipmentHandler.pullAllFromEntity();
         }
         return result;
     }
