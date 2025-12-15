@@ -72,7 +72,9 @@ public class CompanionEntity extends PathfinderMob implements MenuProvider, Rang
         return LivingEntity.createLivingAttributes()
                 .add(Attributes.MAX_HEALTH, 20.0D)
                 .add(Attributes.MOVEMENT_SPEED, 0.25D)
-                .add(Attributes.FOLLOW_RANGE, 16.0D);
+                .add(Attributes.FOLLOW_RANGE, 16.0D)
+                .add(Attributes.ATTACK_DAMAGE, 4.0D)
+                .add(Attributes.ATTACK_SPEED, 4.0D);
     }
 
     @Override
