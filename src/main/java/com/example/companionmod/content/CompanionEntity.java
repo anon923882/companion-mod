@@ -164,16 +164,16 @@ public class CompanionEntity extends PathfinderMob implements MenuProvider {
 
     @Override
     protected SoundEvent getAmbientSound() {
-        return SoundEvents.VILLAGER_AMBIENT;
+        return SoundEvents.PLAYER_BREATH;
     }
 
     @Override
     protected SoundEvent getHurtSound(net.minecraft.world.damagesource.DamageSource damageSource) {
-        return SoundEvents.VILLAGER_HURT;
+        return SoundEvents.PLAYER_HURT;
     }
 
     @Override
     protected SoundEvent getDeathSound() {
-        return SoundEvents.VILLAGER_DEATH;
+        return SoundEvents.PLAYER_DEATH;
     }
 }
