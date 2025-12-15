@@ -29,10 +29,10 @@ public class CompanionClient {
         private static final ResourceLocation TEXTURE = ResourceLocation.fromNamespaceAndPath(CompanionMod.MOD_ID, "textures/entity/companion.png");
 
         public CompanionRenderer(EntityRendererProvider.Context context) {
-            super(context, new PlayerModel<>(context.bakeLayer(ModelLayers.PLAYER), false), 0.5F);
+            super(context, new PlayerModel<>(context.bakeLayer(ModelLayers.PLAYER_SLIM), true), 0.5F);
             this.addLayer(new HumanoidArmorLayer<>(this,
-                    new HumanoidModel<>(context.bakeLayer(ModelLayers.PLAYER_INNER_ARMOR)),
-                    new HumanoidModel<>(context.bakeLayer(ModelLayers.PLAYER_OUTER_ARMOR)),
+                    new HumanoidModel<>(context.bakeLayer(ModelLayers.PLAYER_SLIM_INNER_ARMOR)),
+                    new HumanoidModel<>(context.bakeLayer(ModelLayers.PLAYER_SLIM_OUTER_ARMOR)),
                     context.getModelManager()));
             this.addLayer(new ItemInHandLayer<>(this, context.getItemInHandRenderer()));
         }

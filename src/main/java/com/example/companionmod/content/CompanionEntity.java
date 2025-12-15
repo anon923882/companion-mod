@@ -6,6 +6,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.MenuProvider;
@@ -28,6 +29,8 @@ import net.minecraft.world.level.Level;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.ContainerHelper;
 import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.core.BlockPos;
 
 public class CompanionEntity extends PathfinderMob implements MenuProvider {
     private static final int INVENTORY_SIZE = 41;
@@ -60,7 +63,7 @@ public class CompanionEntity extends PathfinderMob implements MenuProvider {
 
     @Override
     public InteractionResult mobInteract(Player player, InteractionHand hand) {
-        if (!this.level().isClientSide && player instanceof ServerPlayer serverPlayer) {
+        if (!this.level().isClientSide && player instanceof ServerPlayer serverPlayer && this.isWithinUsableDistance(player)) {
             serverPlayer.openMenu(this, buf -> buf.writeVarInt(this.getId()));
         }
         return InteractionResult.sidedSuccess(this.level().isClientSide);
@@ -159,12 +162,17 @@ public class CompanionEntity extends PathfinderMob implements MenuProvider {
     }
 
     public boolean isWithinUsableDistance(Player player) {
-        return !this.isRemoved() && this.distanceToSqr(player) <= 64.0D;
+        return !this.isRemoved() && this.distanceToSqr(player) <= 9.0D;
     }
 
     @Override
     protected SoundEvent getAmbientSound() {
         return SoundEvents.PLAYER_BREATH;
+    }
+
+    @Override
+    public int getAmbientSoundInterval() {
+        return 80;
     }
 
     @Override
@@ -175,5 +183,15 @@ public class CompanionEntity extends PathfinderMob implements MenuProvider {
     @Override
     protected SoundEvent getDeathSound() {
         return SoundEvents.PLAYER_DEATH;
+    }
+
+    @Override
+    protected void playStepSound(BlockPos pos, BlockState state) {
+        super.playStepSound(pos, state);
+    }
+
+    @Override
+    public SoundSource getSoundSource() {
+        return SoundSource.PLAYERS;
     }
 }
