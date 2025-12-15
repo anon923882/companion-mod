@@ -90,6 +90,15 @@ sourceSets.main.resources { srcDir generatedResourcesDir }
 tasks.named('processResources') {
     dependsOn textureTasks
     exclude('**/*.b64')
+
+    filesMatching('META-INF/neoforge.mods.toml') {
+        expand(
+                mod_id: project.mod_id,
+                mod_version: project.mod_version,
+                mod_name: project.mod_name
+        )
+        filteringCharset = 'UTF-8'
+    }
 }
 
 publishing {
