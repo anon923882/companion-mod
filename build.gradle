@@ -1,0 +1,110 @@
+plugins {
+    id 'java'
+    id 'idea'
+    id 'maven-publish'
+    id 'net.neoforged.moddev' version '2.0.124'
+}
+
+group = project.mod_group
+version = project.mod_version
+
+base {
+    archivesName = project.mod_id
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(project.java_version as int)
+    }
+}
+
+repositories {
+    mavenLocal()
+    mavenCentral()
+    maven { url = 'https://maven.neoforged.net/releases' }
+}
+
+neoForge {
+    enable {
+        version = project.neo_version
+    }
+
+    addModdingDependenciesTo(sourceSets.main)
+
+    runs {
+        client {
+            client()
+            systemProperty 'neoforge.logging.console.level', 'debug'
+        }
+        server {
+            server()
+        }
+        data {
+            data()
+        }
+    }
+
+    mods {
+        register(project.mod_id) {
+            sourceSet sourceSets.main
+        }
+    }
+}
+
+dependencies {
+}
+
+def generatedResourcesDir = file('src/generated/resources')
+
+def textureTasks = []
+
+def registerTextureTask = { String taskName, String sourcePath, String outputPath ->
+    textureTasks << tasks.register(taskName) {
+        def base64Source = file(sourcePath)
+        def outputTexture = file(outputPath)
+
+        inputs.file(base64Source)
+        outputs.file(outputTexture)
+
+        doLast {
+            outputTexture.parentFile.mkdirs()
+            outputTexture.bytes = base64Source.text.decodeBase64()
+        }
+    }
+}
+
+registerTextureTask(
+        'generateCompanionInventoryTexture',
+        'src/main/resources/assets/companionmod/textures/gui/companion_inventory.png.b64',
+        "${generatedResourcesDir}/assets/companionmod/textures/gui/companion_inventory.png"
+)
+
+registerTextureTask(
+        'generateCompanionEntityTexture',
+        'src/main/resources/assets/companionmod/textures/entity/companion.png.b64',
+        "${generatedResourcesDir}/assets/companionmod/textures/entity/companion.png"
+)
+
+sourceSets.main.resources { srcDir generatedResourcesDir }
+
+tasks.named('processResources') {
+    dependsOn textureTasks
+    exclude('**/*.b64')
+
+    filesMatching('META-INF/neoforge.mods.toml') {
+        expand(
+                mod_id: project.mod_id,
+                mod_version: project.mod_version,
+                mod_name: project.mod_name
+        )
+        filteringCharset = 'UTF-8'
+    }
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            artifact jar
+        }
+    }
+}

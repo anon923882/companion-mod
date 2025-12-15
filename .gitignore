@@ -1,0 +1,20 @@
+/.gradle/
+/build/
+/run/
+/out/
+/.idea/
+*.iml
+/.settings/
+/.project
+/.classpath
+.DS_Store
+/mdk.zip
+/src/generated/
+/gradle-8.8/
+gradle-8.8
+# Wrapper jar is regenerated from base64 at build time
+/gradle/wrapper/gradle-wrapper.jar
+
+# Generated from base64 during build
+src/main/resources/assets/companionmod/textures/gui/companion_inventory.png
+src/main/resources/assets/companionmod/textures/entity/companion.png
