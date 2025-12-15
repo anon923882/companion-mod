@@ -21,6 +21,7 @@ import net.minecraft.world.entity.ai.goal.FloatGoal;
 import net.minecraft.world.entity.ai.goal.LookAtPlayerGoal;
 import net.minecraft.world.entity.ai.goal.RandomLookAroundGoal;
 import net.minecraft.world.entity.ai.goal.WaterAvoidingRandomStrollGoal;
+import net.minecraft.world.entity.ai.goal.target.HurtByTargetGoal;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
@@ -29,6 +30,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.ContainerHelper;
 import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.TamableAnimal;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.core.BlockPos;
 
@@ -59,6 +61,7 @@ public class CompanionEntity extends PathfinderMob implements MenuProvider {
         this.goalSelector.addGoal(5, new WaterAvoidingRandomStrollGoal(this, 0.8D));
         this.goalSelector.addGoal(6, new LookAtPlayerGoal(this, Player.class, 8.0F));
         this.goalSelector.addGoal(7, new RandomLookAroundGoal(this));
+        this.targetSelector.addGoal(1, new HurtByTargetGoal(this));
     }
 
     @Override
@@ -77,6 +80,11 @@ public class CompanionEntity extends PathfinderMob implements MenuProvider {
     @Override
     public Component getDisplayName() {
         return Component.translatable("menu." + CompanionMod.MOD_ID + ".companion");
+    }
+
+    @Override
+    public boolean shouldShowName() {
+        return true;
     }
 
     @Override
@@ -130,7 +138,7 @@ public class CompanionEntity extends PathfinderMob implements MenuProvider {
     public void aiStep() {
         super.aiStep();
         if (!this.level().isClientSide) {
-            syncAllEquipmentSlots();
+            pullEquipmentState();
         }
     }
 
@@ -141,6 +149,25 @@ public class CompanionEntity extends PathfinderMob implements MenuProvider {
             ItemStack previous = super.getItemBySlot(equipmentSlot);
             if (!ItemStack.matches(previous, stack)) {
                 super.setItemSlot(equipmentSlot, stack.copy());
+            }
+        }
+    }
+
+    private void pullEquipmentState() {
+        updateInventorySlot(EquipmentSlot.HEAD);
+        updateInventorySlot(EquipmentSlot.CHEST);
+        updateInventorySlot(EquipmentSlot.LEGS);
+        updateInventorySlot(EquipmentSlot.FEET);
+        updateInventorySlot(EquipmentSlot.MAINHAND);
+    }
+
+    private void updateInventorySlot(EquipmentSlot slot) {
+        int index = slotIndexFor(slot);
+        if (index >= 0) {
+            ItemStack equipped = super.getItemBySlot(slot);
+            ItemStack stored = inventory.getItem(index);
+            if (!ItemStack.matches(equipped, stored)) {
+                inventory.setItem(index, equipped.copy());
             }
         }
     }
@@ -161,18 +188,27 @@ public class CompanionEntity extends PathfinderMob implements MenuProvider {
         return super.isInvulnerableTo(source);
     }
 
+    @Override
+    public boolean hurt(net.minecraft.world.damagesource.DamageSource source, float amount) {
+        boolean result = super.hurt(source, amount);
+        if (result && !this.level().isClientSide) {
+            pullEquipmentState();
+        }
+        return result;
+    }
+
     public boolean isWithinUsableDistance(Player player) {
         return !this.isRemoved() && this.distanceToSqr(player) <= 9.0D;
     }
 
     @Override
     protected SoundEvent getAmbientSound() {
-        return SoundEvents.PLAYER_BREATH;
+        return null;
     }
 
     @Override
     public int getAmbientSoundInterval() {
-        return 80;
+        return 0;
     }
 
     @Override
@@ -193,5 +229,13 @@ public class CompanionEntity extends PathfinderMob implements MenuProvider {
     @Override
     public SoundSource getSoundSource() {
         return SoundSource.PLAYERS;
+    }
+
+    @Override
+    public boolean isAlliedTo(net.minecraft.world.entity.Entity entity) {
+        if (entity instanceof TamableAnimal tamable && tamable.isTame()) {
+            return true;
+        }
+        return super.isAlliedTo(entity);
     }
 }
