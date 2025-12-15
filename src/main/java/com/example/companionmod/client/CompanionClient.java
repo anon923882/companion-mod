@@ -54,7 +54,7 @@ public class CompanionClient {
                 return;
             }
 
-            super.renderNameTag(entity, name, poseStack, buffer, packedLight, partialTick);
+            super.renderNameTag(entity, entity.getName(), poseStack, buffer, packedLight, partialTick);
 
             Component statusLine = buildStatusLine(entity);
             poseStack.pushPose();

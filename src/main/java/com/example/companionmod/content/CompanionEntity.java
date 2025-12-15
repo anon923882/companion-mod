@@ -66,6 +66,14 @@ public class CompanionEntity extends PathfinderMob implements MenuProvider {
 
     @Override
     public InteractionResult mobInteract(Player player, InteractionHand hand) {
+        ItemStack held = player.getItemInHand(hand);
+        if (held.is(net.minecraft.world.item.Items.NAME_TAG)) {
+            InteractionResult result = held.interactLivingEntity(player, this, hand);
+            if (result.consumesAction()) {
+                return result;
+            }
+        }
+
         if (!this.level().isClientSide && player instanceof ServerPlayer serverPlayer && this.isWithinUsableDistance(player)) {
             serverPlayer.openMenu(this, buf -> buf.writeVarInt(this.getId()));
         }
@@ -79,7 +87,8 @@ public class CompanionEntity extends PathfinderMob implements MenuProvider {
 
     @Override
     public Component getDisplayName() {
-        return Component.translatable("menu." + CompanionMod.MOD_ID + ".companion");
+        Component nameComponent = this.hasCustomName() ? this.getCustomName() : Component.translatable("entity." + CompanionMod.MOD_ID + ".companion");
+        return Component.translatable("menu." + CompanionMod.MOD_ID + ".companion_inventory", nameComponent);
     }
 
     @Override
@@ -147,7 +156,7 @@ public class CompanionEntity extends PathfinderMob implements MenuProvider {
         if (index >= 0) {
             ItemStack stack = inventory.getItem(index);
             ItemStack previous = super.getItemBySlot(equipmentSlot);
-            if (!ItemStack.matches(previous, stack)) {
+            if (stacksDiffer(previous, stack)) {
                 super.setItemSlot(equipmentSlot, stack.copy());
             }
         }
@@ -166,10 +175,26 @@ public class CompanionEntity extends PathfinderMob implements MenuProvider {
         if (index >= 0) {
             ItemStack equipped = super.getItemBySlot(slot);
             ItemStack stored = inventory.getItem(index);
-            if (!ItemStack.matches(equipped, stored)) {
+            if (stacksDiffer(stored, equipped)) {
                 inventory.setItem(index, equipped.copy());
             }
         }
+    }
+
+    private static boolean stacksDiffer(ItemStack first, ItemStack second) {
+        if (first.isEmpty() && second.isEmpty()) {
+            return false;
+        }
+        if (first.isEmpty() != second.isEmpty()) {
+            return true;
+        }
+        if (!ItemStack.isSameItemSameComponents(first, second)) {
+            return true;
+        }
+        if (first.getCount() != second.getCount()) {
+            return true;
+        }
+        return first.getDamageValue() != second.getDamageValue();
     }
 
     private static int slotIndexFor(EquipmentSlot slot) {

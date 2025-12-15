@@ -28,6 +28,7 @@ public class CompanionMod {
         modBus.addListener(ModItems::buildCreativeTabs);
         modBus.addListener(CompanionEvents::registerAttributes);
         NeoForge.EVENT_BUS.addListener(CompanionEvents::handleDrops);
+        NeoForge.EVENT_BUS.addListener(CompanionEvents::addHostileTargets);
 
         try {
             Class.forName("net.neoforged.neoforge.client.event.RegisterMenuScreensEvent");
