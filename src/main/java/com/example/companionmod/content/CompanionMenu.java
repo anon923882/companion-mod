@@ -9,11 +9,11 @@ import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.InventoryMenu;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.SimpleContainer;
+import com.example.companionmod.content.companion.CompanionInventory;
 
 public class CompanionMenu extends AbstractContainerMenu {
     private final CompanionEntity companion;
-    private final SimpleContainer inventory;
+    private final CompanionInventory inventory;
 
     public CompanionMenu(int id, Inventory playerInventory, CompanionEntity companion) {
         super(ModMenus.COMPANION_MENU.get(), id);
@@ -130,12 +130,21 @@ public class CompanionMenu extends AbstractContainerMenu {
             ItemStack stackInSlot = slot.getItem();
             itemstack = stackInSlot.copy();
             int companionSlots = inventory.getContainerSize();
+            int playerStart = companionSlots;
+            int playerEnd = this.slots.size();
+            int equipmentEnd = CompanionInventory.OFFHAND_SLOT + 1;
+            int storageStart = CompanionInventory.HOTBAR_START;
+
             if (slotIndex < companionSlots) {
-                if (!this.moveItemStackTo(stackInSlot, companionSlots, this.slots.size(), true)) {
+                if (!this.moveItemStackTo(stackInSlot, playerStart, playerEnd, true)) {
                     return ItemStack.EMPTY;
                 }
-            } else if (!this.moveItemStackTo(stackInSlot, 0, companionSlots, false)) {
-                return ItemStack.EMPTY;
+            } else {
+                if (tryMoveToEquipment(stackInSlot, equipmentEnd)) {
+                    // moved into armor/offhand
+                } else if (!this.moveItemStackTo(stackInSlot, storageStart, companionSlots, false)) {
+                    return ItemStack.EMPTY;
+                }
             }
 
             if (stackInSlot.isEmpty()) {
@@ -145,6 +154,18 @@ public class CompanionMenu extends AbstractContainerMenu {
             }
         }
         return itemstack;
+    }
+
+    private boolean tryMoveToEquipment(ItemStack stack, int equipmentEndExclusive) {
+        for (int i = 0; i < equipmentEndExclusive; i++) {
+            Slot equipmentSlot = this.slots.get(i);
+            if (equipmentSlot.mayPlace(stack) && !equipmentSlot.hasItem()) {
+                ItemStack single = stack.split(1);
+                equipmentSlot.set(single);
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override

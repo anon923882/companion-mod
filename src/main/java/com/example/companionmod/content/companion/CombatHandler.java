@@ -201,7 +201,7 @@ public class CombatHandler {
         WeaponChoice best = new WeaponChoice(ItemStack.EMPTY, CompanionInventory.HOTBAR_START, false, -Float.MAX_VALUE);
         int arrowCount = countArrows();
 
-        for (int slot = CompanionInventory.HOTBAR_START; slot <= CompanionInventory.HOTBAR_END; slot++) {
+        for (int slot = CompanionInventory.HOTBAR_START; slot < inventory.getContainerSize(); slot++) {
             ItemStack stack = inventory.getItem(slot);
             if (stack.isEmpty()) continue;
 
@@ -226,7 +226,7 @@ public class CombatHandler {
 
     private WeaponChoice findBowChoice(int arrowCount) {
         WeaponChoice bowChoice = null;
-        for (int slot = CompanionInventory.HOTBAR_START; slot <= CompanionInventory.HOTBAR_END; slot++) {
+        for (int slot = CompanionInventory.HOTBAR_START; slot < inventory.getContainerSize(); slot++) {
             ItemStack stack = inventory.getItem(slot);
             if (stack.getItem() instanceof BowItem) {
                 float score = weaponScore(stack, arrowCount);
@@ -343,8 +343,6 @@ public class CombatHandler {
         }
 
         private boolean shouldAttackNow(double distanceSqr) {
-            double reach = companion.getBbWidth() * 2.0F + companion.getBbWidth();
-            double meleeRange = reach * reach + 2.5F;
             if (isUsingBow()) {
                 return attackCooldown <= 0 && distanceSqr <= 144;
             }
@@ -352,7 +350,7 @@ public class CombatHandler {
                 return attackCooldown <= 0 && distanceSqr >= (CREEPER_PREFERRED_MIN * CREEPER_PREFERRED_MIN)
                         && distanceSqr <= (CREEPER_PREFERRED_MAX * CREEPER_PREFERRED_MAX);
             }
-            return attackCooldown <= 0 && distanceSqr <= meleeRange;
+            return attackCooldown <= 0 && distanceSqr <= meleeRangeSqr();
         }
 
         private void doAttack(LivingEntity target, double distanceSqr) {
@@ -385,14 +383,19 @@ public class CombatHandler {
                     retreatFrom(target, 1.2D);
                     return;
                 }
+                if (distanceSqr <= meleeRangeSqr()) {
+                    companion.getNavigation().stop();
+                    return;
+                }
                 if (distanceSqr < ZOMBIE_SAFE_DISTANCE * ZOMBIE_SAFE_DISTANCE) {
                     companion.getNavigation().moveTo(target, 0.75D);
                     return;
                 }
             }
 
-            double safeDistance = 3.5D;
-            if (distanceSqr > safeDistance * safeDistance) {
+            if (distanceSqr <= meleeRangeSqr()) {
+                companion.getNavigation().stop();
+            } else if (distanceSqr > 3.5D * 3.5D) {
                 companion.getNavigation().moveTo(target, 1.15D);
             } else {
                 retreatFrom(target, 0.95D);
@@ -460,6 +463,11 @@ public class CombatHandler {
             }
             Vec3 retreat = direction.normalize().scale(2.5D);
             companion.getNavigation().moveTo(companion.getX() + retreat.x, companion.getY(), companion.getZ() + retreat.z, speed);
+        }
+
+        private double meleeRangeSqr() {
+            double reach = companion.getBbWidth() * 3.0F;
+            return reach * reach + 2.5D;
         }
     }
 }

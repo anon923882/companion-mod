@@ -30,9 +30,6 @@ public class CompanionInventory extends SimpleContainer {
     }
 
     public void loadFromTag(CompoundTag tag, RegistryAccess registryAccess) {
-        if (!tag.contains("Inventory")) {
-            return;
-        }
         NonNullList<ItemStack> stacks = NonNullList.withSize(getContainerSize(), ItemStack.EMPTY);
         ContainerHelper.loadAllItems(tag, stacks, registryAccess);
         for (int i = 0; i < stacks.size() && i < getContainerSize(); i++) {
