@@ -102,9 +102,12 @@ public class CompanionEntity extends PathfinderMob implements MenuProvider, Rang
             setOwner(player);
         }
         if (held.is(net.minecraft.world.item.Items.NAME_TAG)) {
-            InteractionResult result = held.interactLivingEntity(player, this, hand);
-            if (result.consumesAction()) {
-                return result;
+            String desired = held.getHoverName().getString().trim();
+            if (!desired.equalsIgnoreCase("slave")) {
+                InteractionResult result = held.interactLivingEntity(player, this, hand);
+                if (result.consumesAction()) {
+                    return result;
+                }
             }
         }
 

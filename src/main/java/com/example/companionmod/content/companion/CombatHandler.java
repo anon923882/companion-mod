@@ -10,9 +10,11 @@ import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.ai.goal.Goal;
 import net.minecraft.world.entity.monster.Creeper;
 import net.minecraft.world.entity.monster.Monster;
+import net.minecraft.world.entity.monster.RangedAttackMob;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.AbstractArrow;
 import net.minecraft.world.entity.projectile.ProjectileUtil;
@@ -20,12 +22,14 @@ import net.minecraft.world.item.BowItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.ProjectileWeaponItem;
+import net.minecraft.world.item.ShieldItem;
 import net.minecraft.world.item.SwordItem;
 import net.minecraft.world.item.TieredItem;
 import net.minecraft.world.item.enchantment.Enchantment;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
 import net.minecraft.world.item.enchantment.Enchantments;
 import net.minecraft.world.level.pathfinder.Path;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import com.example.companionmod.content.CompanionEntity;
@@ -44,8 +48,8 @@ public class CombatHandler {
     private static final int EQUIPMENT_REEVALUATE_TICKS = 30;
     private static final double ZOMBIE_SAFE_DISTANCE = 4.5D;
     private static final double ZOMBIE_RETREAT_DISTANCE = 3.2D;
-    private static final double CREEPER_PREFERRED_MIN = 7.0D;
-    private static final double CREEPER_PREFERRED_MAX = 10.5D;
+    private static final double CREEPER_PREFERRED_MIN = 8.5D;
+    private static final double CREEPER_PREFERRED_MAX = 12.0D;
 
     private final CompanionEntity companion;
     private final CompanionInventory inventory;
@@ -195,6 +199,8 @@ public class CombatHandler {
         if (!choice.stack.isEmpty()) {
             equipmentHandler.equipMainHandFromInventory(choice.inventoryIndex);
         }
+
+        equipShieldIfNeeded();
     }
 
     private WeaponChoice pickBestWeapon() {
@@ -302,6 +308,36 @@ public class CombatHandler {
 
     private record WeaponChoice(ItemStack stack, int inventoryIndex, boolean usingBow, float score) {}
 
+    private void equipShieldIfNeeded() {
+        boolean wantsShield = currentTarget instanceof RangedAttackMob || currentTarget instanceof Creeper;
+        ItemStack offhand = inventory.getItem(CompanionInventory.OFFHAND_SLOT);
+        if (wantsShield && offhand.getItem() instanceof ShieldItem) {
+            equipmentHandler.syncEquipmentSlot(EquipmentSlot.OFFHAND);
+            return;
+        }
+
+        if (!wantsShield) {
+            return;
+        }
+
+        int shieldSlot = -1;
+        for (int i = 0; i < inventory.getContainerSize(); i++) {
+            ItemStack stack = inventory.getItem(i);
+            if (stack.is(Items.SHIELD)) {
+                shieldSlot = i;
+                break;
+            }
+        }
+
+        if (shieldSlot >= 0) {
+            ItemStack shield = inventory.getItem(shieldSlot).copy();
+            ItemStack previousOffhand = offhand.copy();
+            inventory.setItem(CompanionInventory.OFFHAND_SLOT, shield);
+            inventory.setItem(shieldSlot, previousOffhand);
+            equipmentHandler.syncEquipmentSlot(EquipmentSlot.OFFHAND);
+        }
+    }
+
     private class CompanionCombatGoal extends Goal {
         private int attackCooldown;
 
@@ -319,6 +355,7 @@ public class CombatHandler {
             LivingEntity target = getTarget();
             if (!hasTarget()) {
                 companion.getNavigation().stop();
+                stopShieldUse();
                 return;
             }
 
@@ -346,9 +383,15 @@ public class CombatHandler {
             if (isUsingBow()) {
                 return attackCooldown <= 0 && distanceSqr <= 144;
             }
-            if (getTarget() instanceof Creeper) {
+            if (getTarget() instanceof Creeper creeper) {
+                if (creeper.isIgnited() || creeper.getSwellDir() > 0) {
+                    return false;
+                }
                 return attackCooldown <= 0 && distanceSqr >= (CREEPER_PREFERRED_MIN * CREEPER_PREFERRED_MIN)
                         && distanceSqr <= (CREEPER_PREFERRED_MAX * CREEPER_PREFERRED_MAX);
+            }
+            if (getTarget().getType().is(EntityTypeTags.UNDEAD)) {
+                return attackCooldown <= 0 && distanceSqr <= (ZOMBIE_SAFE_DISTANCE * ZOMBIE_SAFE_DISTANCE);
             }
             return attackCooldown <= 0 && distanceSqr <= meleeRangeSqr();
         }
@@ -378,6 +421,12 @@ public class CombatHandler {
                 return;
             }
 
+            if (target instanceof RangedAttackMob) {
+                tryRaiseShield();
+            } else {
+                stopShieldUse();
+            }
+
             if (isZombieHordeNearby(target)) {
                 if (distanceSqr < ZOMBIE_RETREAT_DISTANCE * ZOMBIE_RETREAT_DISTANCE) {
                     retreatFrom(target, 1.2D);
@@ -388,7 +437,7 @@ public class CombatHandler {
                     return;
                 }
                 if (distanceSqr < ZOMBIE_SAFE_DISTANCE * ZOMBIE_SAFE_DISTANCE) {
-                    companion.getNavigation().moveTo(target, 0.75D);
+                    companion.getNavigation().moveTo(target, 1.05D);
                     return;
                 }
             }
@@ -416,6 +465,12 @@ public class CombatHandler {
                     companion.getNavigation().stop();
                 }
             }
+
+            if (target instanceof RangedAttackMob) {
+                tryRaiseShield();
+            } else {
+                stopShieldUse();
+            }
         }
 
         private int meleeCooldown() {
@@ -430,12 +485,17 @@ public class CombatHandler {
 
         private void handleCreeperSpacing(LivingEntity target, double distanceSqr) {
             double distance = Math.sqrt(distanceSqr);
-            if (distance < CREEPER_PREFERRED_MIN) {
-                retreatFrom(target, 1.25D);
+            boolean primed = target instanceof Creeper creeper && (creeper.isIgnited() || creeper.getSwellDir() > 0 || creeper.getSwelling(0.0F) > 0);
+            if (distance < CREEPER_PREFERRED_MIN || primed) {
+                retreatFrom(target, 1.35D);
+                stopShieldUse();
+                attackCooldown = Math.max(attackCooldown, 10);
             } else if (distance > CREEPER_PREFERRED_MAX) {
                 companion.getNavigation().moveTo(target, isUsingBow() ? 0.9D : 1.05D);
+                stopShieldUse();
             } else {
                 companion.getNavigation().stop();
+                stopShieldUse();
             }
         }
 
@@ -466,8 +526,21 @@ public class CombatHandler {
         }
 
         private double meleeRangeSqr() {
-            double reach = companion.getBbWidth() * 3.0F;
-            return reach * reach + 2.5D;
+            double reach = Math.max(2.25D, companion.getBbWidth() * 3.0F);
+            return reach * reach;
+        }
+
+        private void tryRaiseShield() {
+            ItemStack offhand = companion.getOffhandItem();
+            if (offhand.getItem() instanceof ShieldItem) {
+                companion.startUsingItem(InteractionHand.OFF_HAND);
+            }
+        }
+
+        private void stopShieldUse() {
+            if (companion.isUsingItem()) {
+                companion.stopUsingItem();
+            }
         }
     }
 }
