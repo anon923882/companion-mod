@@ -33,6 +33,7 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import com.example.companionmod.content.CompanionEntity;
+import com.example.companionmod.content.companion.CreeperCombatStrategy;
 import java.util.EnumSet;
 import java.util.List;
 
@@ -48,12 +49,11 @@ public class CombatHandler {
     private static final int EQUIPMENT_REEVALUATE_TICKS = 30;
     private static final double ZOMBIE_SAFE_DISTANCE = 4.5D;
     private static final double ZOMBIE_RETREAT_DISTANCE = 3.2D;
-    private static final double CREEPER_PREFERRED_MIN = 8.5D;
-    private static final double CREEPER_PREFERRED_MAX = 12.0D;
 
     private final CompanionEntity companion;
     private final CompanionInventory inventory;
     private final CompanionEquipmentHandler equipmentHandler;
+    private final CreeperCombatStrategy creeperStrategy;
     private int threatTicker;
     private int equipmentTicker;
     private LivingEntity currentTarget;
@@ -63,6 +63,7 @@ public class CombatHandler {
         this.companion = companion;
         this.inventory = inventory;
         this.equipmentHandler = equipmentHandler;
+        this.creeperStrategy = new CreeperCombatStrategy(companion);
     }
 
     public Goal createCombatGoal() {
@@ -364,6 +365,14 @@ public class CombatHandler {
 
             companion.getLookControl().setLookAt(target, 30.0F, 30.0F);
 
+            if (target instanceof Creeper creeper) {
+                handleCreeper(creeper, distanceSqr);
+                if (attackCooldown > 0) {
+                    attackCooldown--;
+                }
+                return;
+            }
+
             if (isUsingBow()) {
                 maintainBowDistance(target, distanceSqr);
             } else {
@@ -382,13 +391,6 @@ public class CombatHandler {
         private boolean shouldAttackNow(double distanceSqr) {
             if (isUsingBow()) {
                 return attackCooldown <= 0 && distanceSqr <= 144;
-            }
-            if (getTarget() instanceof Creeper creeper) {
-                if (creeper.isIgnited() || creeper.getSwellDir() > 0) {
-                    return false;
-                }
-                return attackCooldown <= 0 && distanceSqr >= (CREEPER_PREFERRED_MIN * CREEPER_PREFERRED_MIN)
-                        && distanceSqr <= (CREEPER_PREFERRED_MAX * CREEPER_PREFERRED_MAX);
             }
             if (getTarget().getType().is(EntityTypeTags.UNDEAD)) {
                 return attackCooldown <= 0 && distanceSqr <= (ZOMBIE_SAFE_DISTANCE * ZOMBIE_SAFE_DISTANCE);
@@ -415,12 +417,42 @@ public class CombatHandler {
             }
         }
 
-        private void pursueTarget(LivingEntity target, double distanceSqr) {
-            if (target instanceof Creeper) {
-                handleCreeperSpacing(target, distanceSqr);
-                return;
+        private void handleCreeper(Creeper creeper, double distanceSqr) {
+            double distance = Math.sqrt(distanceSqr);
+            CreeperCombatStrategy.Plan plan = creeperStrategy.plan(creeper, isUsingBow(), distance);
+
+            if (plan.raiseShield()) {
+                tryRaiseShield();
+            } else {
+                stopShieldUse();
             }
 
+            switch (plan.action()) {
+                case APPROACH -> companion.getNavigation().moveTo(creeper, plan.speed());
+                case RETREAT -> retreatFrom(creeper, plan.speed());
+                case HOLD -> companion.getNavigation().stop();
+            }
+
+            if (plan.shouldAttack() && attackCooldown <= 0) {
+                if (isUsingBow()) {
+                    companion.performRangedAttack(creeper, (float) (distance / 15.0F));
+                    attackCooldown = bowCooldown();
+                } else {
+                    companion.setSprinting(true);
+                    if (companion.onGround()) {
+                        companion.getJumpControl().jump();
+                    }
+                    companion.doHurtTarget(creeper);
+                    attackCooldown = meleeCooldown();
+                    if (plan.retreatAfterAttack()) {
+                        retreatFrom(creeper, 1.35D);
+                        creeperStrategy.retreatAfterHit(creeper);
+                    }
+                }
+            }
+        }
+
+        private void pursueTarget(LivingEntity target, double distanceSqr) {
             if (target instanceof RangedAttackMob) {
                 tryRaiseShield();
             } else {
@@ -481,22 +513,6 @@ public class CombatHandler {
 
         private int bowCooldown() {
             return 20;
-        }
-
-        private void handleCreeperSpacing(LivingEntity target, double distanceSqr) {
-            double distance = Math.sqrt(distanceSqr);
-            boolean primed = target instanceof Creeper creeper && (creeper.isIgnited() || creeper.getSwellDir() > 0 || creeper.getSwelling(0.0F) > 0);
-            if (distance < CREEPER_PREFERRED_MIN || primed) {
-                retreatFrom(target, 1.35D);
-                stopShieldUse();
-                attackCooldown = Math.max(attackCooldown, 10);
-            } else if (distance > CREEPER_PREFERRED_MAX) {
-                companion.getNavigation().moveTo(target, isUsingBow() ? 0.9D : 1.05D);
-                stopShieldUse();
-            } else {
-                companion.getNavigation().stop();
-                stopShieldUse();
-            }
         }
 
         private boolean isZombieHordeNearby(LivingEntity target) {

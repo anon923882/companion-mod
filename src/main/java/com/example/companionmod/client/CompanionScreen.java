@@ -34,7 +34,7 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
         if (ownerLabel != null) {
             int labelWidth = this.font.width(ownerLabel);
             int x = this.leftPos + 8;
-            int y = this.topPos + 234;
+            int y = this.topPos + 134;
             guiGraphics.drawString(this.font, ownerLabel, x, y, 0x404040, false);
         }
     }
